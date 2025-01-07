@@ -31,8 +31,31 @@ jobs:
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
+            # Instalar Node.js si no está presente
+            if ! command -v node &> /dev/null; then
+              curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+              sudo apt-get install -y nodejs
+            fi
+            
+            # Instalar PM2 globalmente si no está presente
+            if ! command -v pm2 &> /dev/null; then
+              sudo npm install -g pm2
+            fi
+            
+            # Navegar al directorio del proyecto
             cd /var/www/notion2
+            
+            # Actualizar el código
             git pull
+            
+            # Instalar dependencias y construir
             npm install
             npm run build
-            pm2 restart notion2 
+            
+            # Reiniciar la aplicación con PM2
+            pm2 describe notion2 > /dev/null
+            if [ $? -eq 0 ]; then
+              pm2 restart notion2
+            else
+              pm2 start ecosystem.config.js
+            fi 
