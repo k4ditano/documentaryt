@@ -1,4 +1,6 @@
-# Documentary T.
+# Documentary
+
+Una aplicación moderna de gestión de documentos y tareas, inspirada en Notion.
 
 ## Descripción del Proyecto
 Documentary T. es una aplicación de documentación inspirada en Notion que combina un editor de texto enriquecido con un asistente virtual inteligente. El proyecto está construido con React y TypeScript para el frontend, utilizando una arquitectura de servicios modular y una base de datos SQLite para el almacenamiento.
