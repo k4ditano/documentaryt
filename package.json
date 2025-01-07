@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "server": "cd backend && npm run dev",
     "start": "concurrently \"npm run dev\" \"npm run server\"",
-    "postinstall": "copy node_modules\\pdfjs-dist\\build\\pdf.worker.min.mjs public\\pdf.worker.min.js"
+    "postinstall": "node -e \"const fs=require('fs'); const path=require('path'); fs.copyFileSync(path.join('node_modules', 'pdfjs-dist', 'build', 'pdf.worker.min.mjs'), path.join('public', 'pdf.worker.min.js'));\""
   },
   "dependencies": {
     "@blocknote/core": "^0.22.0",
