@@ -1,14 +1,15 @@
 module.exports = {
   apps: [{
     name: 'notion2',
-    script: 'dist/server/main.js',
+    script: 'backend/src/server.js',
+    watch: false,
     env: {
       NODE_ENV: 'production',
-      PORT: 3000
+      PORT: 3001
     },
-    instances: 1,
-    autorestart: true,
-    watch: false,
-    max_memory_restart: '1G'
+    env_production: {
+      NODE_ENV: 'production',
+      PORT: 3001
+    }
   }]
-} 
+}; 

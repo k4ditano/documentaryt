@@ -47,38 +47,28 @@ jobs:
               sudo npm install -g pm2
             fi
             
-            # Asegurarse de que el directorio existe y tiene los permisos correctos
+            # Limpiar y preparar el directorio
+            sudo rm -rf /var/www/notion2
             sudo mkdir -p /var/www/notion2
             sudo chown -R $USER:$USER /var/www/notion2
             
-            # Configurar git para usar HTTPS
-            git config --global credential.helper store
-            
-            # Clonar el repositorio si no existe, o actualizar si ya existe
-            if [ ! -d "/var/www/notion2/.git" ]; then
-              cd /var/www
-              git clone https://${{ secrets.GITHUB_TOKEN }}@github.com/k4ditano/documentaryt.git notion2
-              cd notion2
-            else
-              cd /var/www/notion2
-              git config --local user.email "abeljhinestrosa@gmail.com"
-              git config --local user.name "k4ditano"
-              git remote set-url origin https://${{ secrets.GITHUB_TOKEN }}@github.com/k4ditano/documentaryt.git
-              git fetch origin
-              git reset --hard origin/main
-            fi
+            # Clonar el repositorio
+            cd /var/www
+            git clone https://${{ secrets.GITHUB_TOKEN }}@github.com/k4ditano/documentaryt.git notion2
+            cd notion2
             
             # Instalar dependencias y construir
-            CI=false npm install
-            CI=false npm run build
+            npm install
+            npm run build
             
             # Asegurarse de que los directorios necesarios existen
             mkdir -p uploads database
             
+            # Copiar el archivo ecosystem.config.js si no existe
+            if [ ! -f "ecosystem.config.js" ]; then
+              cp ecosystem.config.js.example ecosystem.config.js || echo "No ecosystem config template found"
+            fi
+            
             # Reiniciar la aplicación con PM2
-            pm2 describe notion2 > /dev/null
-            if [ $? -eq 0 ]; then
-              pm2 restart notion2
-            else
-              pm2 start ecosystem.config.js
-            fi 
+            pm2 delete notion2 || true
+            pm2 start ecosystem.config.js 
