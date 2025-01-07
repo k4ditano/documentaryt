@@ -16,11 +16,6 @@ jobs:
       with:
         node-version: '18'
 
-    - name: Install Dependencies and Build
-      run: |
-        npm install
-        npm run build
-
     - name: Deploy to VPS
       uses: appleboy/ssh-action@master
       with:
@@ -50,16 +45,19 @@ jobs:
 
           # Instalar dependencias del frontend y construir
           echo "Instalando dependencias del frontend..."
-          npm install
+          npm install --legacy-peer-deps
           echo "Construyendo frontend..."
           npm run build
+          
+          # Verificar que se creó el directorio dist
+          ls -la dist/
 
           # Instalar dependencias del backend
           echo "Instalando dependencias del backend..."
           cd backend
           rm -f package-lock.json
           npm cache clean --force
-          npm install
+          npm install --legacy-peer-deps
 
           # Crear archivo .env en el directorio backend
           echo "Configurando variables de entorno..."
@@ -69,17 +67,66 @@ jobs:
           echo "NODE_ENV=production" >> .env
           echo "DB_PATH=/var/www/notion2_data/database.sqlite" >> .env
 
+          # Configurar Apache
+          echo "Configurando Apache..."
+          sudo tee /etc/apache2/sites-available/notion2.conf > /dev/null << 'EOL'
+          <VirtualHost *:80>
+              ServerName 145.223.100.119
+              DocumentRoot /var/www/notion2/dist
+
+              ProxyPreserveHost On
+              ProxyRequests Off
+
+              <Location /api>
+                  ProxyPass http://localhost:3001/api
+                  ProxyPassReverse http://localhost:3001/api
+              </Location>
+
+              <Directory /var/www/notion2/dist>
+                  Options Indexes FollowSymLinks MultiViews
+                  AllowOverride All
+                  Require all granted
+                  FallbackResource /index.html
+              </Directory>
+
+              ErrorLog \${APACHE_LOG_DIR}/notion2-error.log
+              CustomLog \${APACHE_LOG_DIR}/notion2-access.log combined
+          </VirtualHost>
+          EOL
+
+          # Habilitar módulos de Apache necesarios
+          sudo a2enmod proxy
+          sudo a2enmod proxy_http
+          sudo a2enmod rewrite
+
+          # Habilitar el sitio y reiniciar Apache
+          sudo a2ensite notion2.conf
+          sudo systemctl restart apache2
+
           # Asegurar permisos
           cd ..
           chmod -R 755 /var/www/notion2
           chmod -R 755 /var/www/notion2_data
           chmod 644 backend/.env
 
+          # Crear archivo .htaccess en el directorio dist
+          echo "Creando .htaccess..."
+          cat > dist/.htaccess << 'EOL'
+          <IfModule mod_rewrite.c>
+            RewriteEngine On
+            RewriteBase /
+            RewriteRule ^index\.html$ - [L]
+            RewriteCond %{REQUEST_FILENAME} !-f
+            RewriteCond %{REQUEST_FILENAME} !-d
+            RewriteRule . /index.html [L]
+          </IfModule>
+          EOL
+
           # Reiniciar aplicación con PM2
           echo "Reiniciando aplicación..."
           pm2 delete notion2 || true
           cd backend
-          pm2 start src/server.js --name notion2
+          NODE_ENV=production pm2 start src/server.js --name notion2
 
           # Mostrar estado de PM2
           echo "Estado de PM2:"
