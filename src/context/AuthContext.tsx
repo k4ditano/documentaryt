@@ -1,14 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authService } from '../services/authService';
-
-interface User {
-  id: number;
-  username: string;
-  email: string;
-  avatar?: string;
-  created_at?: string;
-  updated_at?: string;
-}
+import type { User } from '../types';
 
 interface AuthContextType {
   user: User | null;
@@ -26,19 +18,11 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth debe ser usado dentro de un AuthProvider');
-  }
-  return context;
-};
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -46,105 +30,93 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const checkAuth = async () => {
     try {
-      const user = await authService.getCurrentUser();
-      setUser(user);
+      const userData = await authService.getCurrentUser();
+      if (userData) {
+        setUser(userData as User);
+        setIsAuthenticated(true);
+      }
     } catch (error) {
-      console.error('Error al verificar la autenticación:', error);
-      setError(error instanceof Error ? error.message : 'Error al verificar la autenticación');
+      console.error('Error al verificar autenticación:', error);
+      setError('Error al verificar autenticación');
     } finally {
       setLoading(false);
-      setIsInitialized(true);
     }
   };
 
   const login = async (email: string, password: string) => {
     try {
-      setLoading(true);
+      const userData = await authService.login(email, password);
+      setUser(userData as User);
+      setIsAuthenticated(true);
       setError(null);
-      const { user } = await authService.login(email, password);
-      setUser(user);
-      await checkAuth();
     } catch (error) {
       console.error('Error al iniciar sesión:', error);
-      setError(error instanceof Error ? error.message : 'Error al iniciar sesión');
+      setError('Credenciales inválidas');
       throw error;
-    } finally {
-      setLoading(false);
     }
   };
 
   const register = async (username: string, email: string, password: string) => {
     try {
-      setLoading(true);
+      const userData = await authService.register(username, email, password);
+      setUser(userData as User);
+      setIsAuthenticated(true);
       setError(null);
-      const { user } = await authService.register(username, email, password);
-      setUser(user);
-      await checkAuth();
     } catch (error) {
       console.error('Error al registrar usuario:', error);
-      setError(error instanceof Error ? error.message : 'Error al registrar usuario');
+      setError('Error al registrar usuario');
       throw error;
-    } finally {
-      setLoading(false);
     }
   };
 
   const logout = async () => {
     try {
-      setLoading(true);
-      setError(null);
       await authService.logout();
       setUser(null);
+      setIsAuthenticated(false);
+      setError(null);
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
-      setError(error instanceof Error ? error.message : 'Error al cerrar sesión');
-      setUser(null);
-    } finally {
-      setLoading(false);
+      setError('Error al cerrar sesión');
+      throw error;
     }
   };
 
   const updateProfile = async (data: Partial<User>) => {
     try {
-      setLoading(true);
+      if (!user) throw new Error('No hay usuario autenticado');
+      const updatedUser = await authService.updateProfile(user.id, data);
+      setUser(updatedUser as User);
       setError(null);
-      const updatedUser = await authService.updateProfile(data);
-      setUser(updatedUser);
     } catch (error) {
-      console.error('Error al actualizar el perfil:', error);
-      setError(error instanceof Error ? error.message : 'Error al actualizar el perfil');
+      console.error('Error al actualizar perfil:', error);
+      setError('Error al actualizar perfil');
       throw error;
-    } finally {
-      setLoading(false);
     }
   };
 
   const updatePassword = async (currentPassword: string, newPassword: string) => {
     try {
-      setLoading(true);
+      if (!user) throw new Error('No hay usuario autenticado');
+      await authService.updatePassword(user.id, currentPassword, newPassword);
       setError(null);
-      await authService.updatePassword(currentPassword, newPassword);
     } catch (error) {
-      console.error('Error al actualizar la contraseña:', error);
-      setError(error instanceof Error ? error.message : 'Error al actualizar la contraseña');
+      console.error('Error al actualizar contraseña:', error);
+      setError('Error al actualizar contraseña');
       throw error;
-    } finally {
-      setLoading(false);
     }
   };
 
   const uploadAvatar = async (file: File) => {
     try {
-      setLoading(true);
+      if (!user) throw new Error('No hay usuario autenticado');
+      const updatedUser = await authService.uploadAvatar(user.id, file);
+      setUser(updatedUser as User);
       setError(null);
-      const updatedUser = await authService.uploadAvatar(file);
-      setUser(updatedUser);
     } catch (error) {
-      console.error('Error al subir el avatar:', error);
-      setError(error instanceof Error ? error.message : 'Error al subir el avatar');
+      console.error('Error al subir avatar:', error);
+      setError('Error al subir avatar');
       throw error;
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -152,23 +124,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
   };
 
-  if (!isInitialized) {
-    return null;
+  return (
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      error,
+      isAuthenticated,
+      login,
+      register,
+      logout,
+      updateProfile,
+      updatePassword,
+      uploadAvatar,
+      clearError
+    }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
   }
+  return context;
+};
 
-  const value = {
-    user,
-    loading,
-    error,
-    isAuthenticated: !!user,
-    login,
-    register,
-    logout,
-    updateProfile,
-    updatePassword,
-    uploadAvatar,
-    clearError,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}; 
+export default AuthContext; 

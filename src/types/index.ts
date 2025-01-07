@@ -10,9 +10,11 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  username: string;
   password?: string;
   created_at?: string;
   updated_at?: string;
+  avatar?: string;
 }
 
 export interface Page {
@@ -23,6 +25,7 @@ export interface Page {
   created_at: string;
   updated_at: string;
   last_modified?: string;
+  tags: string;
 }
 
 export interface PageWithoutTags extends Omit<Page, 'tags'> {

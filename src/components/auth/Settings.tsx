@@ -1,341 +1,228 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import {
   Box,
+  Container,
+  Paper,
   Typography,
-  IconButton,
-  Switch,
-  FormControlLabel,
   TextField,
   Button,
-  Avatar,
+  Alert,
+  Grid,
+  Switch,
+  FormControlLabel,
   Divider,
 } from '@mui/material';
-import {
-  ArrowBack as ArrowBackIcon,
-  Person as PersonIcon,
-  Palette as PaletteIcon,
-  Notifications as NotificationsIcon,
-  Language as LanguageIcon,
-} from '@mui/icons-material';
-import { styled } from '@mui/material/styles';
-import { useAuth } from '../../context/AuthContext';
 import Sidebar from '../Sidebar';
 
-const ContentContainer = styled('div')({
-  flex: 1,
-  overflow: 'auto',
-  display: 'flex',
-  flexDirection: 'column',
-  backgroundColor: '#ffffff',
-});
-
-const MainContent = styled('div')({
-  flex: 1,
-  display: 'flex',
-  flexDirection: 'column',
-  maxWidth: '900px',
-  width: '100%',
-  margin: '0 auto',
-  padding: '32px 96px',
-  '@media (max-width: 768px)': {
-    padding: '24px',
-  },
-});
-
-const TopBar = styled('div')({
-  display: 'flex',
-  alignItems: 'center',
-  padding: '10px 12px',
-  borderBottom: '1px solid rgba(55, 53, 47, 0.09)',
-  gap: '8px',
-  minHeight: '45px',
-  backgroundColor: '#ffffff',
-});
-
-const SettingSection = styled('div')({
-  padding: '24px 14px',
-  marginBottom: '8px',
-  borderRadius: '3px',
-  '&:hover': {
-    backgroundColor: 'rgba(55, 53, 47, 0.03)',
-  },
-});
-
-const ActionButton = styled(Button)({
-  color: 'rgba(55, 53, 47, 0.65)',
-  textTransform: 'none',
-  padding: '2px 14px',
-  justifyContent: 'flex-start',
-  minHeight: '28px',
-  backgroundColor: 'transparent',
-  '&:hover': {
-    backgroundColor: 'rgba(55, 53, 47, 0.08)',
-  },
-  '&.Mui-disabled': {
-    backgroundColor: 'transparent',
-  },
-});
-
-const StyledTextField = styled(TextField)({
-  '& .MuiOutlinedInput-root': {
-    '& fieldset': {
-      borderColor: 'rgba(55, 53, 47, 0.16)',
-    },
-    '&:hover fieldset': {
-      borderColor: 'rgba(55, 53, 47, 0.32)',
-    },
-    '&.Mui-focused fieldset': {
-      borderColor: 'rgba(55, 53, 47, 0.5)',
-    },
-  },
-  '& .MuiInputLabel-root': {
-    color: 'rgba(55, 53, 47, 0.6)',
-  },
-});
-
-const StyledSwitch = styled(Switch)({
-  '& .MuiSwitch-switchBase.Mui-checked': {
-    color: '#2ecc71',
-    '&:hover': {
-      backgroundColor: 'rgba(46, 204, 113, 0.08)',
-    },
-  },
-  '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-    backgroundColor: '#2ecc71',
-  },
-});
-
 const Settings: React.FC = () => {
-  const navigate = useNavigate();
-  const { user, error, clearError } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [settings, setSettings] = useState({
-    name: user?.name || '',
+  const { user, error, clearError, updateProfile, updatePassword } = useAuth();
+  const [formData, setFormData] = useState({
+    username: user?.username || '',
     email: user?.email || '',
-    darkMode: false,
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
     emailNotifications: true,
-    desktopNotifications: false,
-    language: 'es',
   });
+  const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
-  const handleBack = () => {
-    navigate(-1);
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, checked } = e.target;
+    const newValue = name === 'emailNotifications' ? checked : value;
+    setFormData(prev => ({ ...prev, [name]: newValue }));
+    if (error) clearError();
+    if (validationError) setValidationError(null);
+    if (successMessage) setSuccessMessage(null);
   };
 
-  const handleSave = async () => {
-    setIsLoading(true);
+  const validateForm = () => {
+    if (formData.newPassword && formData.newPassword.length < 6) {
+      setValidationError('La nueva contraseña debe tener al menos 6 caracteres');
+      return false;
+    }
+    if (formData.newPassword !== formData.confirmPassword) {
+      setValidationError('Las contraseñas no coinciden');
+      return false;
+    }
+    return true;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+
     try {
-      // Aquí implementaremos la actualización de ajustes
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setSuccessMessage('Configuración guardada correctamente');
-      // TODO: Implementar guardado real
+      setLoading(true);
+      // Actualizar perfil
+      if (formData.username !== user?.username) {
+        await updateProfile({ username: formData.username });
+      }
+
+      // Actualizar contraseña
+      if (formData.currentPassword && formData.newPassword) {
+        await updatePassword(formData.currentPassword, formData.newPassword);
+        setFormData(prev => ({
+          ...prev,
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: '',
+        }));
+      }
+
+      setSuccessMessage('Configuración actualizada correctamente');
     } catch (error) {
-      console.error('Error al guardar los ajustes:', error);
+      setValidationError(error instanceof Error ? error.message : 'Error al actualizar la configuración');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#fbfbfa' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
       <Sidebar />
-      <ContentContainer>
-        <TopBar>
-          <IconButton 
-            onClick={handleBack}
-            sx={{ 
-              color: 'rgba(55, 53, 47, 0.65)',
-              '&:hover': {
-                backgroundColor: 'rgba(55, 53, 47, 0.08)',
-              },
-            }}
-          >
-            <ArrowBackIcon />
-          </IconButton>
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          p: 3,
+          width: { sm: `calc(100% - 240px)` },
+          ml: { sm: '240px' },
+          backgroundColor: 'background.default',
+        }}
+      >
+        <Container maxWidth="md">
+          <Paper sx={{ p: 4, mt: 4 }}>
+            <Typography variant="h4" gutterBottom>
+              Configuración
+            </Typography>
 
-          <Typography 
-            sx={{ 
-              flex: 1, 
-              color: '#37352f',
-              fontSize: '14px',
-              fontWeight: 500,
-            }}
-          >
-            Ajustes
-          </Typography>
-
-          <ActionButton
-            onClick={handleSave}
-            disabled={isLoading}
-          >
-            {isLoading ? 'Guardando...' : 'Guardar cambios'}
-          </ActionButton>
-        </TopBar>
-
-        <MainContent>
-          {(error || successMessage) && (
-            <Box 
-              sx={{ 
-                mb: 3,
-                p: '8px 14px',
-                color: successMessage ? '#27ae60' : '#e74c3c',
-                fontSize: '14px',
-              }}
-            >
-              {successMessage || error}
-            </Box>
-          )}
-
-          <SettingSection>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-              <Avatar 
-                sx={{ 
-                  width: 64, 
-                  height: 64, 
-                  bgcolor: 'rgba(55, 53, 47, 0.4)',
-                  mr: 2,
-                  fontSize: '24px',
+            {(error || validationError || successMessage) && (
+              <Alert
+                severity={successMessage ? 'success' : 'error'}
+                sx={{ mb: 3 }}
+                onClose={() => {
+                  if (error) clearError();
+                  if (validationError) setValidationError(null);
+                  if (successMessage) setSuccessMessage(null);
                 }}
               >
-                {user?.name?.charAt(0).toUpperCase()}
-              </Avatar>
-              <Box>
-                <Typography sx={{ color: '#37352f', fontSize: '14px', fontWeight: 500 }}>
-                  {user?.name}
-                </Typography>
-                <Typography sx={{ color: 'rgba(55, 53, 47, 0.65)', fontSize: '14px' }}>
-                  {user?.email}
-                </Typography>
-              </Box>
-            </Box>
-            <Divider sx={{ my: 2 }} />
-            <Typography sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              mb: 2,
-              color: '#37352f',
-              fontSize: '14px',
-              fontWeight: 500,
-            }}>
-              <PersonIcon sx={{ mr: 1, fontSize: 20 }} /> Perfil
-            </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <StyledTextField
-                size="small"
-                label="Nombre"
-                value={settings.name}
-                onChange={(e) => setSettings({ ...settings, name: e.target.value })}
-                fullWidth
-                variant="outlined"
-              />
-              <StyledTextField
-                size="small"
-                label="Email"
-                value={settings.email}
-                onChange={(e) => setSettings({ ...settings, email: e.target.value })}
-                fullWidth
-                variant="outlined"
-              />
-            </Box>
-          </SettingSection>
+                {successMessage || error || validationError}
+              </Alert>
+            )}
 
-          <SettingSection>
-            <Typography sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              mb: 2,
-              color: '#37352f',
-              fontSize: '14px',
-              fontWeight: 500,
-            }}>
-              <PaletteIcon sx={{ mr: 1, fontSize: 20 }} /> Apariencia
-            </Typography>
-            <FormControlLabel
-              control={
-                <StyledSwitch
-                  checked={settings.darkMode}
-                  onChange={(e) => setSettings({ ...settings, darkMode: e.target.checked })}
-                />
-              }
-              label={
-                <Typography sx={{ fontSize: '14px', color: 'rgba(55, 53, 47, 0.65)' }}>
-                  Modo oscuro
-                </Typography>
-              }
-            />
-          </SettingSection>
-
-          <SettingSection>
-            <Typography sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              mb: 2,
-              color: '#37352f',
-              fontSize: '14px',
-              fontWeight: 500,
-            }}>
-              <NotificationsIcon sx={{ mr: 1, fontSize: 20 }} /> Notificaciones
-            </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <FormControlLabel
-                control={
-                  <StyledSwitch
-                    checked={settings.emailNotifications}
-                    onChange={(e) => setSettings({ ...settings, emailNotifications: e.target.checked })}
-                  />
-                }
-                label={
-                  <Typography sx={{ fontSize: '14px', color: 'rgba(55, 53, 47, 0.65)' }}>
-                    Recibir notificaciones por email
+            <Box component="form" onSubmit={handleSubmit}>
+              <Grid container spacing={3}>
+                <Grid item xs={12}>
+                  <Typography variant="h6" gutterBottom>
+                    Información de la cuenta
                   </Typography>
-                }
-              />
-              <FormControlLabel
-                control={
-                  <StyledSwitch
-                    checked={settings.desktopNotifications}
-                    onChange={(e) => setSettings({ ...settings, desktopNotifications: e.target.checked })}
-                  />
-                }
-                label={
-                  <Typography sx={{ fontSize: '14px', color: 'rgba(55, 53, 47, 0.65)' }}>
-                    Notificaciones de escritorio
-                  </Typography>
-                }
-              />
-            </Box>
-          </SettingSection>
+                </Grid>
 
-          <SettingSection>
-            <Typography sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              mb: 2,
-              color: '#37352f',
-              fontSize: '14px',
-              fontWeight: 500,
-            }}>
-              <LanguageIcon sx={{ mr: 1, fontSize: 20 }} /> Idioma
-            </Typography>
-            <StyledTextField
-              select
-              size="small"
-              fullWidth
-              value={settings.language}
-              onChange={(e) => setSettings({ ...settings, language: e.target.value })}
-              SelectProps={{
-                native: true,
-              }}
-              variant="outlined"
-            >
-              <option value="es">Español</option>
-              <option value="en">English</option>
-            </StyledTextField>
-          </SettingSection>
-        </MainContent>
-      </ContentContainer>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Nombre de usuario"
+                    name="username"
+                    value={formData.username}
+                    onChange={handleChange}
+                    disabled={loading}
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Correo electrónico"
+                    name="email"
+                    value={formData.email}
+                    disabled
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Divider sx={{ my: 2 }} />
+                  <Typography variant="h6" gutterBottom>
+                    Cambiar contraseña
+                  </Typography>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Contraseña actual"
+                    name="currentPassword"
+                    type="password"
+                    value={formData.currentPassword}
+                    onChange={handleChange}
+                    disabled={loading}
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Nueva contraseña"
+                    name="newPassword"
+                    type="password"
+                    value={formData.newPassword}
+                    onChange={handleChange}
+                    disabled={loading}
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Confirmar nueva contraseña"
+                    name="confirmPassword"
+                    type="password"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    disabled={loading}
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Divider sx={{ my: 2 }} />
+                  <Typography variant="h6" gutterBottom>
+                    Notificaciones
+                  </Typography>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={formData.emailNotifications}
+                        onChange={handleChange}
+                        name="emailNotifications"
+                        color="primary"
+                        disabled={loading}
+                      />
+                    }
+                    label="Recibir notificaciones por correo electrónico"
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    size="large"
+                    disabled={loading}
+                    sx={{ mt: 2 }}
+                  >
+                    {loading ? 'Guardando...' : 'Guardar cambios'}
+                  </Button>
+                </Grid>
+              </Grid>
+            </Box>
+          </Paper>
+        </Container>
+      </Box>
     </Box>
   );
 };
