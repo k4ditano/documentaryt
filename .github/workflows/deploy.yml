@@ -64,11 +64,8 @@ jobs:
             # Asegurarse de que los directorios necesarios existen
             mkdir -p uploads database
             
-            # Copiar el archivo ecosystem.config.js si no existe
-            if [ ! -f "ecosystem.config.js" ]; then
-              cp ecosystem.config.js.example ecosystem.config.js || echo "No ecosystem config template found"
-            fi
-            
-            # Reiniciar la aplicación con PM2
+            # Detener la aplicación existente si está corriendo
             pm2 delete notion2 || true
-            pm2 start ecosystem.config.js 
+            
+            # Iniciar la aplicación con PM2
+            pm2 start ecosystem.config.cjs 
