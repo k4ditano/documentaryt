@@ -1,108 +1,109 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AppProvider } from './context/AppContext';
-import { AuthProvider } from './context/AuthContext';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { ThemeProvider } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { es } from 'date-fns/locale';
-import TaskList from './components/TaskList';
-import TaskCalendar from './components/TaskCalendar';
-import NotificationCenter from './components/NotificationCenter';
-import ReminderList from './components/ReminderList';
-
-// Páginas y componentes
-import Login from './components/auth/Login';
-import Register from './components/auth/Register';
+import theme from './theme';
+import { AuthProvider } from './context/AuthContext';
+import { AppProvider } from './context/AppContext';
+import { NotificationProvider } from './context/NotificationContext';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Dashboard from './pages/Dashboard';
 import Profile from './components/auth/Profile';
 import Settings from './components/auth/Settings';
-import ProtectedRoute from './components/auth/ProtectedRoute';
-import Dashboard from './pages/Dashboard';
-import Editor from './pages/Editor';
+import TaskCalendar from './components/TaskCalendar';
+import TaskList from './components/TaskList';
+import ReminderList from './components/ReminderList';
+import AISearch from './components/AISearch';
+import PrivateRoute from './components/PrivateRoute';
+import { useApp } from './context/AppContext';
+
+const AppContent: React.FC = () => {
+  const { pages } = useApp();
+
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route
+        path="/"
+        element={
+          <PrivateRoute>
+            <Dashboard />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <PrivateRoute>
+            <Profile />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <PrivateRoute>
+            <Settings />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/calendar"
+        element={
+          <PrivateRoute>
+            <TaskCalendar pages={pages} />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/tasks"
+        element={
+          <PrivateRoute>
+            <TaskList />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/reminders"
+        element={
+          <PrivateRoute>
+            <ReminderList />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/search"
+        element={
+          <PrivateRoute>
+            <AISearch />
+          </PrivateRoute>
+        }
+      />
+    </Routes>
+  );
+};
 
 const App: React.FC = () => {
   return (
-    <Router>
-      <AuthProvider>
-        <AppProvider>
-          <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
-            <Routes>
-              {/* Rutas públicas */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-
-              {/* Rutas protegidas */}
-              <Route
-                path="/"
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/editor/:id"
-                element={
-                  <ProtectedRoute>
-                    <Editor />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/page/:id"
-                element={
-                  <ProtectedRoute>
-                    <Editor />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/profile"
-                element={
-                  <ProtectedRoute>
-                    <Profile />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/settings"
-                element={
-                  <ProtectedRoute>
-                    <Settings />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/tasks"
-                element={
-                  <ProtectedRoute>
-                    <TaskList />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/calendar"
-                element={
-                  <ProtectedRoute>
-                    <TaskCalendar />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/reminders"
-                element={
-                  <ProtectedRoute>
-                    <ReminderList />
-                  </ProtectedRoute>
-                }
-              />
-
-              {/* Redirigir rutas no encontradas al dashboard */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </LocalizationProvider>
-        </AppProvider>
-      </AuthProvider>
-    </Router>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
+        <Router>
+          <AuthProvider>
+            <AppProvider>
+              <NotificationProvider>
+                <AppContent />
+              </NotificationProvider>
+            </AppProvider>
+          </AuthProvider>
+        </Router>
+      </LocalizationProvider>
+    </ThemeProvider>
   );
 };
 

@@ -9,12 +9,10 @@ export interface UserSettings {
 export interface User {
   id: string;
   email: string;
+  name: string;
   username: string;
-  name?: string;
-  password?: string;
-  created_at?: string;
-  updated_at?: string;
-  avatar?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Page {
@@ -22,10 +20,10 @@ export interface Page {
   title: string;
   content: string;
   parent_id: string | null;
-  created_at?: string;
-  updated_at?: string;
-  last_modified?: string;
-  tags?: string;
+  created_at: string;
+  updated_at: string;
+  completed?: boolean;
+  due_date?: string;
 }
 
 export interface PageWithoutTags extends Omit<Page, 'tags'> {
@@ -40,8 +38,8 @@ export interface Folder {
   id: string;
   name: string;
   parent_id: string | null;
-  created_at?: string;
-  updated_at?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface File {
@@ -52,4 +50,15 @@ export interface File {
   size: number;
   uploadDate: string;
   pageId?: string;
+}
+
+export interface Reminder {
+  id: string;
+  title: string;
+  description: string;
+  due_date: string;
+  completed: boolean;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
 } 
