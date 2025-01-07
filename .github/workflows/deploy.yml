@@ -45,15 +45,29 @@ jobs:
               sudo npm install -g pm2
             fi
             
-            # Navegar al directorio del proyecto
-            cd /var/www/notion2
+            # Asegurarse de que el directorio existe y tiene los permisos correctos
+            sudo mkdir -p /var/www/notion2
+            sudo chown -R $USER:$USER /var/www/notion2
             
-            # Actualizar el código
-            git pull
+            # Clonar el repositorio si no existe, o actualizar si ya existe
+            if [ ! -d "/var/www/notion2/.git" ]; then
+              cd /var/www
+              git clone https://github.com/k4ditano/documentaryt.git notion2
+              cd notion2
+            else
+              cd /var/www/notion2
+              git config --local user.email "abeljhinestrosa@gmail.com"
+              git config --local user.name "k4ditano"
+              git fetch origin
+              git reset --hard origin/main
+            fi
             
             # Instalar dependencias y construir
             CI=false npm install
             CI=false npm run build
+            
+            # Asegurarse de que los directorios necesarios existen
+            mkdir -p uploads database
             
             # Reiniciar la aplicación con PM2
             pm2 describe notion2 > /dev/null
