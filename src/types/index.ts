@@ -1,5 +1,3 @@
-export * from './auth.types';
-
 export interface UserSettings {
   theme: 'light' | 'dark';
   language: string;

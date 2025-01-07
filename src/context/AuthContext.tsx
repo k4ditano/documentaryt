@@ -32,7 +32,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const userData = await authService.getCurrentUser();
       if (userData) {
-        setUser(userData as User);
+        setUser(userData);
         setIsAuthenticated(true);
       }
     } catch (error) {
@@ -45,8 +45,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     try {
-      const userData = await authService.login(email, password);
-      setUser(userData as User);
+      const response = await authService.login(email, password);
+      setUser(response.user);
       setIsAuthenticated(true);
       setError(null);
     } catch (error) {
@@ -58,8 +58,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (username: string, email: string, password: string) => {
     try {
-      const userData = await authService.register(username, email, password);
-      setUser(userData as User);
+      const response = await authService.register(username, email, password);
+      setUser(response.user);
       setIsAuthenticated(true);
       setError(null);
     } catch (error) {
@@ -85,8 +85,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateProfile = async (data: Partial<User>) => {
     try {
       if (!user) throw new Error('No hay usuario autenticado');
-      const updatedUser = await authService.updateProfile(user.id, data);
-      setUser(updatedUser as User);
+      const updatedUser = await authService.updateProfile(data);
+      setUser(updatedUser);
       setError(null);
     } catch (error) {
       console.error('Error al actualizar perfil:', error);
@@ -98,7 +98,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updatePassword = async (currentPassword: string, newPassword: string) => {
     try {
       if (!user) throw new Error('No hay usuario autenticado');
-      await authService.updatePassword(user.id, currentPassword, newPassword);
+      await authService.updatePassword(currentPassword, newPassword);
       setError(null);
     } catch (error) {
       console.error('Error al actualizar contraseña:', error);
@@ -110,8 +110,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const uploadAvatar = async (file: File) => {
     try {
       if (!user) throw new Error('No hay usuario autenticado');
-      const updatedUser = await authService.uploadAvatar(user.id, file);
-      setUser(updatedUser as User);
+      const updatedUser = await authService.uploadAvatar(file);
+      setUser(updatedUser);
       setError(null);
     } catch (error) {
       console.error('Error al subir avatar:', error);
