@@ -38,7 +38,7 @@ app.use((req, res, next) => {
 
 // Configuración de CORS
 const corsOptions = {
-  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://145.223.100.119'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -52,28 +52,31 @@ app.use(cookieParser());
 // Servir archivos estáticos
 app.use('/uploads', express.static(uploadsDir));
 
-// Rutas
+// Rutas API
 console.log('Registrando rutas...');
 app.use('/api/auth', authRoutes);
 app.use('/api/pages', pagesRoutes);
 app.use('/api/folders', foldersRoutes);
 app.use('/api/files', filesRoutes);
 app.use('/api/positions', positionsRouter);
-
-// Registrar rutas de tareas
-console.log('Registrando rutas de tareas...');
 app.use('/api/tasks', tasksRouter);
-console.log('Rutas de tareas registradas');
-
-// Registrar rutas de notificaciones
 app.use('/api/notifications', notificationsRouter);
-
-// Rutas
 app.use('/api/reminders', remindersRouter);
 
-// Middleware para manejar rutas no encontradas
-app.use((req, res) => {
-  console.log(`Ruta no encontrada: ${req.method} ${req.path}`);
+// Servir archivos estáticos del frontend
+const frontendBuildPath = path.join(__dirname, '../../dist');
+app.use(express.static(frontendBuildPath));
+
+// Todas las rutas no-API sirven el frontend
+app.get('*', (req, res) => {
+  if (!req.path.startsWith('/api')) {
+    res.sendFile(path.join(frontendBuildPath, 'index.html'));
+  }
+});
+
+// Middleware para manejar rutas API no encontradas
+app.use('/api/*', (req, res) => {
+  console.log(`Ruta API no encontrada: ${req.method} ${req.path}`);
   res.status(404).json({ error: 'Ruta no encontrada' });
 });
 
