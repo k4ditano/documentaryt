@@ -1,3 +1,8 @@
+/**
+ * Definiciones de tipos principales para la aplicación
+ * Última actualización: 2024-01-07
+ */
+
 export interface UserSettings {
   theme: 'light' | 'dark';
   language: string;
