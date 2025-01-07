@@ -12,6 +12,8 @@ jobs:
       CI: false
     steps:
       - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -49,15 +51,19 @@ jobs:
             sudo mkdir -p /var/www/notion2
             sudo chown -R $USER:$USER /var/www/notion2
             
+            # Configurar git para usar HTTPS
+            git config --global credential.helper store
+            
             # Clonar el repositorio si no existe, o actualizar si ya existe
             if [ ! -d "/var/www/notion2/.git" ]; then
               cd /var/www
-              git clone https://github.com/k4ditano/documentaryt.git notion2
+              git clone https://${{ secrets.GITHUB_TOKEN }}@github.com/k4ditano/documentaryt.git notion2
               cd notion2
             else
               cd /var/www/notion2
               git config --local user.email "abeljhinestrosa@gmail.com"
               git config --local user.name "k4ditano"
+              git remote set-url origin https://${{ secrets.GITHUB_TOKEN }}@github.com/k4ditano/documentaryt.git
               git fetch origin
               git reset --hard origin/main
             fi
