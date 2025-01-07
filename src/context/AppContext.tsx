@@ -1,27 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { storageService } from '../services/storageService';
-
-interface Page {
-  id: string;
-  title: string;
-  content: string;
-  parent_id: string | null;
-  created_at: string;
-  updated_at: string;
-  last_modified?: string;
-}
-
-interface Folder {
-  id: string;
-  name: string;
-  parent_id: string | null;
-  created_at?: string;
-  updated_at?: string;
-}
-
-interface PageUpdate extends Partial<Page> {
-  tags?: string;
-}
+import type { Page, Folder, PageUpdate } from '../types';
 
 interface AppContextType {
   pages: Page[];
@@ -47,7 +26,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const refreshPages = async () => {
     try {
       const fetchedPages = await storageService.getPages();
-      setPages(fetchedPages);
+      setPages(fetchedPages as Page[]);
     } catch (error) {
       console.error('Error al cargar las páginas:', error);
     }
@@ -56,7 +35,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const refreshFolders = async () => {
     try {
       const fetchedFolders = await storageService.getFolders();
-      setFolders(fetchedFolders);
+      setFolders(fetchedFolders as Folder[]);
     } catch (error) {
       console.error('Error al cargar las carpetas:', error);
     }
@@ -65,8 +44,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const createPage = async (title: string, parent_id: string | null = null) => {
     try {
       const newPage = await storageService.createPage(title, parent_id);
-      setPages(prev => [...prev, newPage]);
-      return newPage;
+      setPages(prev => [...prev, newPage as Page]);
+      return newPage as Page;
     } catch (error) {
       console.error('Error al crear la página:', error);
       throw error;
@@ -77,9 +56,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const updatedPage = await storageService.updatePage(id, data);
       setPages(prev => prev.map(page => 
-        page.id === id ? { ...page, ...updatedPage } : page
+        page.id === id ? { ...page, ...(updatedPage as Page) } : page
       ));
-      return updatedPage;
+      return updatedPage as Page;
     } catch (error) {
       console.error('Error al actualizar la página:', error);
       throw error;
@@ -99,8 +78,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const createFolder = async (name: string, parent_id: string | null = null) => {
     try {
       const newFolder = await storageService.createFolder(name, parent_id);
-      setFolders(prev => [...prev, newFolder]);
-      return newFolder;
+      setFolders(prev => [...prev, newFolder as Folder]);
+      return newFolder as Folder;
     } catch (error) {
       console.error('Error al crear la carpeta:', error);
       throw error;
@@ -111,9 +90,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const updatedFolder = await storageService.updateFolder(id, data);
       setFolders(prev => prev.map(folder => 
-        folder.id === id ? updatedFolder : folder
+        folder.id === id ? updatedFolder as Folder : folder
       ));
-      return updatedFolder;
+      return updatedFolder as Folder;
     } catch (error) {
       console.error('Error al actualizar la carpeta:', error);
       throw error;
