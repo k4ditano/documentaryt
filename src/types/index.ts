@@ -6,15 +6,23 @@ export interface UserSettings {
   emailNotifications: boolean;
 }
 
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  password?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface Page {
   id: string;
   title: string;
   content: string;
   parent_id: string | null;
-  position?: number;
-  created_at?: string;
-  updated_at?: string;
-  tags: string;
+  created_at: string;
+  updated_at: string;
+  last_modified?: string;
 }
 
 export interface PageWithoutTags extends Omit<Page, 'tags'> {
@@ -29,10 +37,8 @@ export interface Folder {
   id: string;
   name: string;
   parent_id: string | null;
-  user_id: string;
-  created_at: string;
-  updated_at: string;
-  position?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface File {
