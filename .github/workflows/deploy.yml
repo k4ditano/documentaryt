@@ -31,6 +31,9 @@ jobs:
           # Asegurarse de que estamos en el directorio correcto
           cd /var/www
 
+          # Crear directorio para la base de datos si no existe
+          mkdir -p /var/www/notion2_data
+
           # Eliminar el directorio anterior si existe
           rm -rf notion2
           
@@ -54,6 +57,8 @@ jobs:
           # Instalar dependencias del backend
           echo "Instalando dependencias del backend..."
           cd backend
+          rm -f package-lock.json
+          npm cache clean --force
           npm install
 
           # Crear archivo .env en el directorio backend
@@ -62,16 +67,19 @@ jobs:
           echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
           echo "JWT_EXPIRE=24h" >> .env
           echo "NODE_ENV=production" >> .env
+          echo "DB_PATH=/var/www/notion2_data/database.sqlite" >> .env
 
           # Asegurar permisos
           cd ..
           chmod -R 755 /var/www/notion2
+          chmod -R 755 /var/www/notion2_data
           chmod 644 backend/.env
 
           # Reiniciar aplicación con PM2
           echo "Reiniciando aplicación..."
           pm2 delete notion2 || true
-          pm2 start backend/src/server.js --name notion2
+          cd backend
+          pm2 start src/server.js --name notion2
 
           # Mostrar estado de PM2
           echo "Estado de PM2:"

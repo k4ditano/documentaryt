@@ -1,11 +1,17 @@
 import sqlite3 from 'sqlite3';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const dbPath = resolve(__dirname, '../database.sqlite');
+// Usar la ruta de la base de datos desde las variables de entorno o una ruta por defecto
+const dbPath = process.env.DB_PATH || resolve(__dirname, '../database.sqlite');
+console.log('Usando base de datos en:', dbPath);
+
 const db = new sqlite3.Database(dbPath);
 
 // Promisificar métodos de la base de datos
