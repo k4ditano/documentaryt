@@ -1,4 +1,4 @@
-import type { Page, Folder } from '../types';
+import type { Page, Folder } from '../types/index';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { storageService } from '../services/storageService';
-import type { Page, Folder, PageUpdate } from '../types';
+import type { Page, Folder, PageUpdate } from '../types/index';
 
 interface AppContextType {
   pages: Page[];

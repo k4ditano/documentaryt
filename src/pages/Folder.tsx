@@ -19,7 +19,7 @@ import {
   Folder as FolderIcon,
   MoreVert as MoreVertIcon,
 } from '@mui/icons-material';
-import type { Page, Folder } from '../types';
+import type { Page, Folder } from '../types/index';
 import Sidebar from '../components/Sidebar';
 
 const FolderPage: React.FC = () => {
