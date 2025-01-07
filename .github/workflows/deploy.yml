@@ -8,6 +8,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      CI: false
     steps:
       - uses: actions/checkout@v3
       
@@ -22,6 +24,7 @@ jobs:
       - name: Build
         run: npm run build
         env:
+          CI: false
           VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
         
       - name: Deploy to VPS
@@ -49,8 +52,8 @@ jobs:
             git pull
             
             # Instalar dependencias y construir
-            npm install
-            npm run build
+            CI=false npm install
+            CI=false npm run build
             
             # Reiniciar la aplicación con PM2
             pm2 describe notion2 > /dev/null
