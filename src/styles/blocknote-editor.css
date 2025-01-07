@@ -1,0 +1,78 @@
+/* Estilos para el editor BlockNote */
+
+/* Contenedor principal del editor */
+.bn-container {
+  font-size: 16px;
+  width: 100%;
+  color: rgb(55, 53, 47);
+}
+
+/* Ajustar la posición del botón + */
+.bn-add-block {
+  left: -24px;
+}
+
+/* Estilos para el contenido editable */
+.bn-container [contenteditable="true"] {
+  font-size: 16px;
+  line-height: 1.6;
+  color: rgb(55, 53, 47);
+}
+
+/* Estilos para los encabezados */
+.bn-container h1 {
+  font-size: 2em;
+  color: rgb(55, 53, 47);
+}
+
+.bn-container h2 {
+  font-size: 1.5em;
+  color: rgb(55, 53, 47);
+}
+
+.bn-container h3 {
+  font-size: 1.17em;
+  color: rgb(55, 53, 47);
+}
+
+/* Estilos para el texto */
+.bn-container p {
+  color: rgb(55, 53, 47);
+}
+
+/* Ajustes para dispositivos móviles */
+@media (max-width: 768px) {
+  .bn-container {
+    font-size: 18px;
+  }
+
+  .bn-container [contenteditable="true"] {
+    font-size: 18px;
+    line-height: 1.6;
+  }
+
+  .bn-container h1 {
+    font-size: 28px !important;
+  }
+
+  .bn-container h2 {
+    font-size: 24px !important;
+  }
+
+  .bn-container h3 {
+    font-size: 20px !important;
+  }
+
+  .bn-add-block {
+    width: 28px;
+    height: 28px;
+    left: -28px;
+  }
+
+  /* Aumentar el área tocable de los botones */
+  button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 10px;
+  }
+} 
