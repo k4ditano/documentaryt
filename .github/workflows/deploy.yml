@@ -57,8 +57,15 @@ jobs:
             git clone https://${{ secrets.GITHUB_TOKEN }}@github.com/k4ditano/documentaryt.git notion2
             cd notion2
             
-            # Instalar dependencias y construir
+            # Instalar dependencias del frontend
             npm install
+            
+            # Instalar dependencias del backend
+            cd backend
+            npm install
+            cd ..
+            
+            # Construir el frontend
             npm run build
             
             # Asegurarse de que los directorios necesarios existen
@@ -68,4 +75,12 @@ jobs:
             pm2 delete notion2 || true
             
             # Iniciar la aplicación con PM2
-            pm2 start ecosystem.config.cjs 
+            pm2 start ecosystem.config.cjs
+            
+            # Verificar el estado de PM2
+            echo "Estado de PM2:"
+            pm2 list
+            
+            # Mostrar los logs para diagnóstico
+            echo "Últimas líneas del log:"
+            pm2 logs notion2 --lines 20 
