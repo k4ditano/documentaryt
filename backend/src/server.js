@@ -38,8 +38,14 @@ const io = new Server(httpServer, {
   cors: {
     origin: ['http://localhost:5173', 'http://localhost:3000', 'http://145.223.100.119', 'http://145.223.100.119:3001'],
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
   },
-  path: '/socket.io'
+  path: '/socket.io/',
+  transports: ['websocket'],
+  allowEIO3: true,
+  pingTimeout: 60000,
+  pingInterval: 25000
 });
 
 // Crear namespace /api
@@ -65,16 +71,20 @@ app.use(cookieParser());
 
 // Socket.IO middleware para autenticación
 apiNamespace.use((socket, next) => {
+  console.log('Intento de conexión websocket...');
   const token = socket.handshake.auth.token;
   if (!token) {
+    console.log('No se proporcionó token en la conexión websocket');
     return next(new Error('Authentication error: No token provided'));
   }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     socket.userId = decoded.id;
+    console.log(`Token websocket verificado para usuario: ${decoded.id}`);
     next();
   } catch (err) {
+    console.log('Error al verificar token websocket:', err.message);
     next(new Error('Authentication error: Invalid token'));
   }
 });
@@ -86,8 +96,8 @@ apiNamespace.on('connection', (socket) => {
   // Unir al usuario a su sala personal
   socket.join(`user-${socket.userId}`);
 
-  socket.on('disconnect', () => {
-    console.log(`Usuario ${socket.userId} desconectado del namespace /api`);
+  socket.on('disconnect', (reason) => {
+    console.log(`Usuario ${socket.userId} desconectado del namespace /api. Razón: ${reason}`);
   });
 
   socket.on('error', (error) => {
@@ -102,9 +112,9 @@ app.use((req, res, next) => {
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       req.userId = decoded.id;
-      console.log('Token verificado para usuario:', decoded.id);
+      console.log('Token HTTP verificado para usuario:', decoded.id);
     } catch (err) {
-      console.error('Error al verificar token:', err.message);
+      console.error('Error al verificar token HTTP:', err.message);
     }
   }
   next();
@@ -118,6 +128,7 @@ console.log('Registrando rutas...');
 
 // Función para emitir actualizaciones
 const emitUpdate = (userId, event, data) => {
+  console.log(`Emitiendo evento ${event} para usuario ${userId}`);
   apiNamespace.to(`user-${userId}`).emit(event, data);
 };
 
