@@ -2,32 +2,31 @@ import jwt from 'jsonwebtoken';
 
 const authenticateToken = (req, res, next) => {
   console.log('Verificando autenticación...');
-  console.log('Headers:', JSON.stringify(req.headers, null, 2));
-  console.log('Cookies:', req.cookies);
   
-  // Intentar obtener el token del header o de las cookies
-  const authHeader = req.headers['authorization'];
-  const tokenFromHeader = authHeader && authHeader.split(' ')[1];
-  const tokenFromCookie = req.cookies?.token;
-  const token = tokenFromHeader || tokenFromCookie;
-  
-  console.log('Token encontrado:', token ? '***' : 'No token');
-
-  if (!token) {
-    console.log('No se encontró token');
-    return res.status(401).json({ error: 'No se proporcionó token de autenticación' });
-  }
-
-  console.log('Intentando verificar token...');
   try {
+    // Intentar obtener el token del header o de las cookies
+    const authHeader = req.headers['authorization'];
+    const tokenFromHeader = authHeader && authHeader.split(' ')[1];
+    const tokenFromCookie = req.cookies?.token;
+    const token = tokenFromHeader || tokenFromCookie;
+    
+    console.log('Token encontrado:', token ? '***' : 'No token');
+
+    if (!token) {
+      console.log('No se encontró token');
+      return res.status(401).json({ error: 'No se proporcionó token de autenticación' });
+    }
+
+    // Verificar el token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log('Token verificado exitosamente:', decoded);
     
-    if (!decoded || !decoded.id) {
-      console.log('Token no contiene ID de usuario');
+    if (!decoded || typeof decoded !== 'object' || !decoded.id) {
+      console.log('Token no contiene ID de usuario válido');
       return res.status(401).json({ error: 'Token inválido' });
     }
     
+    // Establecer el ID del usuario en la request
     req.userId = decoded.id;
     req.user = { id: decoded.id };
     

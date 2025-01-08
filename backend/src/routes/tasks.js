@@ -15,16 +15,24 @@ router.get('/test', (req, res) => {
 router.get('/', authenticateToken, async (req, res) => {
     console.log('GET /api/tasks - Obteniendo tareas para el usuario:', req.userId);
     try {
-        if (!req.userId) {
-            console.log('No se encontró ID de usuario');
-            return res.status(401).json({ error: 'Usuario no autenticado' });
+        // Verificar que tenemos un ID de usuario válido
+        if (!req.userId || typeof req.userId !== 'number') {
+            console.log('ID de usuario no válido:', req.userId);
+            return res.status(401).json({ error: 'Usuario no autenticado correctamente' });
         }
         
+        // Obtener las tareas de la base de datos
         const tasks = await db.allAsync(
             `SELECT * FROM tasks WHERE user_id = ? ORDER BY due_date ASC`,
             [req.userId]
         );
-        console.log('Tareas encontradas:', tasks?.length || 0);
+        
+        if (!Array.isArray(tasks)) {
+            console.log('Error: tasks no es un array');
+            return res.status(500).json({ error: 'Error al obtener las tareas' });
+        }
+        
+        console.log('Tareas encontradas:', tasks.length);
         
         // Parsear las páginas enlazadas para cada tarea
         const parsedTasks = tasks.map(task => ({
@@ -32,7 +40,7 @@ router.get('/', authenticateToken, async (req, res) => {
             linked_pages: task.linked_pages ? JSON.parse(task.linked_pages) : []
         }));
         
-        res.json(parsedTasks || []);
+        res.json(parsedTasks);
     } catch (error) {
         console.error('Error al obtener tareas:', error);
         res.status(500).json({ error: 'Error al obtener las tareas' });
