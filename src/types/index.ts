@@ -10,34 +10,32 @@ export interface UserSettings {
 }
 
 export interface User {
-  id: string;
-  email: string;
-  name: string;
+  id: number;
   username: string;
+  email: string;
   avatar?: string;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Page {
   id: string;
   title: string;
-  content: string;
+  content?: string;
   parent_id: string | null;
-  position?: number;
   created_at: string;
   updated_at: string;
-  completed?: boolean;
-  due_date?: string;
-  tags: string;
+  user_id: number;
 }
 
 export interface PageWithoutTags extends Omit<Page, 'tags'> {
   tags?: string;
 }
 
-export interface PageUpdate extends Partial<Page> {
-  tags?: string;
+export interface PageUpdate {
+  title?: string;
+  content?: string;
+  parent_id?: string | null;
 }
 
 export interface Folder {
@@ -46,6 +44,7 @@ export interface Folder {
   parent_id: string | null;
   created_at: string;
   updated_at: string;
+  user_id: number;
 }
 
 export interface File {
@@ -65,6 +64,19 @@ export interface Reminder {
   due_date: string;
   completed: boolean;
   user_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Task {
+  id: string;
+  title: string;
+  description?: string;
+  status: 'pending' | 'completed';
+  due_date?: string;
+  priority: 'low' | 'medium' | 'high';
+  page_id?: string;
+  user_id: number;
   created_at: string;
   updated_at: string;
 } 

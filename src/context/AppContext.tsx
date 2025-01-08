@@ -1,145 +1,123 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { storageService } from '../services/storageService';
-import type { Page, Folder, PageUpdate } from '../types/index';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import socketService from '../services/socketService';
+import { Page, Folder, Task } from '../types';
 
 interface AppContextType {
   pages: Page[];
   folders: Folder[];
-  setPages: React.Dispatch<React.SetStateAction<Page[]>>;
-  setFolders: React.Dispatch<React.SetStateAction<Folder[]>>;
-  refreshPages: () => Promise<void>;
-  refreshFolders: () => Promise<void>;
-  createPage: (title: string, parent_id: string | null) => Promise<Page>;
-  updatePage: (id: string, data: PageUpdate) => Promise<Page>;
-  deletePage: (id: string) => Promise<void>;
-  createFolder: (name: string, parent_id: string | null) => Promise<Folder>;
-  updateFolder: (id: string, data: Partial<Folder>) => Promise<Folder>;
-  deleteFolder: (id: string) => Promise<void>;
+  tasks: Task[];
+  loading: boolean;
+  error: string | null;
+  refreshData: () => Promise<void>;
 }
 
-const AppContext = createContext<AppContextType | undefined>(undefined);
+const AppContext = createContext<AppContextType>({
+  pages: [],
+  folders: [],
+  tasks: [],
+  loading: false,
+  error: null,
+  refreshData: async () => {},
+});
+
+export const useApp = () => useContext(AppContext);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [pages, setPages] = useState<Page[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const refreshPages = async () => {
+  const fetchData = useCallback(async () => {
     try {
-      const fetchedPages = await storageService.getPages();
-      setPages(fetchedPages as Page[]);
-    } catch (error) {
-      console.error('Error al cargar las páginas:', error);
-    }
-  };
+      setLoading(true);
+      setError(null);
 
-  const refreshFolders = async () => {
-    try {
-      const fetchedFolders = await storageService.getFolders();
-      setFolders(fetchedFolders as Folder[]);
-    } catch (error) {
-      console.error('Error al cargar las carpetas:', error);
-    }
-  };
+      const [pagesRes, foldersRes, tasksRes] = await Promise.all([
+        fetch('/api/pages'),
+        fetch('/api/folders'),
+        fetch('/api/tasks')
+      ]);
 
-  const createPage = async (title: string, parent_id: string | null = null) => {
-    try {
-      const newPage = await storageService.createPage(title, parent_id);
-      setPages(prev => [...prev, newPage as Page]);
-      return newPage as Page;
-    } catch (error) {
-      console.error('Error al crear la página:', error);
-      throw error;
-    }
-  };
+      const [pagesData, foldersData, tasksData] = await Promise.all([
+        pagesRes.json(),
+        foldersRes.json(),
+        tasksRes.json()
+      ]);
 
-  const updatePage = async (id: string, data: PageUpdate) => {
-    try {
-      const updatedPage = await storageService.updatePage(id, data);
-      setPages(prev => prev.map(page => 
-        page.id === id ? { ...page, ...(updatedPage as Page) } : page
-      ));
-      return updatedPage as Page;
-    } catch (error) {
-      console.error('Error al actualizar la página:', error);
-      throw error;
+      setPages(pagesData);
+      setFolders(foldersData);
+      setTasks(tasksData);
+    } catch (err) {
+      setError('Error al cargar los datos');
+      console.error('Error fetching data:', err);
+    } finally {
+      setLoading(false);
     }
-  };
-
-  const deletePage = async (id: string) => {
-    try {
-      await storageService.deletePage(id);
-      setPages(prev => prev.filter(page => page.id !== id));
-    } catch (error) {
-      console.error('Error al eliminar la página:', error);
-      throw error;
-    }
-  };
-
-  const createFolder = async (name: string, parent_id: string | null = null) => {
-    try {
-      const newFolder = await storageService.createFolder(name, parent_id);
-      setFolders(prev => [...prev, newFolder as Folder]);
-      return newFolder as Folder;
-    } catch (error) {
-      console.error('Error al crear la carpeta:', error);
-      throw error;
-    }
-  };
-
-  const updateFolder = async (id: string, data: Partial<Folder>) => {
-    try {
-      const updatedFolder = await storageService.updateFolder(id, data);
-      setFolders(prev => prev.map(folder => 
-        folder.id === id ? updatedFolder as Folder : folder
-      ));
-      return updatedFolder as Folder;
-    } catch (error) {
-      console.error('Error al actualizar la carpeta:', error);
-      throw error;
-    }
-  };
-
-  const deleteFolder = async (id: string) => {
-    try {
-      await storageService.deleteFolder(id);
-      setFolders(prev => prev.filter(folder => folder.id !== id));
-    } catch (error) {
-      console.error('Error al eliminar la carpeta:', error);
-      throw error;
-    }
-  };
-
-  useEffect(() => {
-    refreshPages();
-    refreshFolders();
   }, []);
 
+  useEffect(() => {
+    fetchData();
+
+    // Suscribirse a actualizaciones via websocket
+    socketService.subscribe('page:update', (data) => {
+      setPages(prev => prev.map(p => p.id === data.id ? data : p));
+    });
+
+    socketService.subscribe('page:create', (data) => {
+      setPages(prev => [...prev, data]);
+    });
+
+    socketService.subscribe('page:delete', (id) => {
+      setPages(prev => prev.filter(p => p.id !== id));
+    });
+
+    socketService.subscribe('folder:update', (data) => {
+      setFolders(prev => prev.map(f => f.id === data.id ? data : f));
+    });
+
+    socketService.subscribe('folder:create', (data) => {
+      setFolders(prev => [...prev, data]);
+    });
+
+    socketService.subscribe('folder:delete', (id) => {
+      setFolders(prev => prev.filter(f => f.id !== id));
+    });
+
+    socketService.subscribe('task:update', (data) => {
+      setTasks(prev => prev.map(t => t.id === data.id ? data : t));
+    });
+
+    socketService.subscribe('task:create', (data) => {
+      setTasks(prev => [...prev, data]);
+    });
+
+    socketService.subscribe('task:delete', (id) => {
+      setTasks(prev => prev.filter(t => t.id !== id));
+    });
+
+    return () => {
+      // Limpiar suscripciones
+      socketService.unsubscribe('page:update', () => {});
+      socketService.unsubscribe('page:create', () => {});
+      socketService.unsubscribe('page:delete', () => {});
+      socketService.unsubscribe('folder:update', () => {});
+      socketService.unsubscribe('folder:create', () => {});
+      socketService.unsubscribe('folder:delete', () => {});
+      socketService.unsubscribe('task:update', () => {});
+      socketService.unsubscribe('task:create', () => {});
+      socketService.unsubscribe('task:delete', () => {});
+    };
+  }, [fetchData]);
+
+  const refreshData = useCallback(async () => {
+    await fetchData();
+  }, [fetchData]);
+
   return (
-    <AppContext.Provider value={{
-      pages,
-      folders,
-      setPages,
-      setFolders,
-      refreshPages,
-      refreshFolders,
-      createPage,
-      updatePage,
-      deletePage,
-      createFolder,
-      updateFolder,
-      deleteFolder
-    }}>
+    <AppContext.Provider value={{ pages, folders, tasks, loading, error, refreshData }}>
       {children}
     </AppContext.Provider>
   );
-};
-
-export const useApp = () => {
-  const context = useContext(AppContext);
-  if (context === undefined) {
-    throw new Error('useApp must be used within an AppProvider');
-  }
-  return context;
-};
-
-export default AppContext; 
+}; 
