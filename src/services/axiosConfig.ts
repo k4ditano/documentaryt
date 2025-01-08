@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosRequestHeaders, InternalAxiosRequestConfig } from 'axios';
 import { getToken, setToken, removeToken } from './authService';
 
 // Configurar la URL base según el entorno
@@ -14,12 +14,10 @@ axios.defaults.headers.common['Content-Type'] = 'application/json';
 
 // Interceptor de solicitudes
 axios.interceptors.request.use(
-  (config) => {
+  (config: InternalAxiosRequestConfig) => {
     const token = getToken();
     if (token) {
-      if (!config.headers) {
-        config.headers = {};
-      }
+      config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -31,46 +29,13 @@ axios.interceptors.request.use(
 
 // Interceptor de respuestas
 axios.interceptors.response.use(
-  (response) => {
-    // Si la respuesta incluye un token en el header, actualizarlo
-    const newToken = response.headers['x-auth-token'];
-    if (newToken) {
-      setToken(newToken);
-    }
-    return response;
-  },
+  (response) => response,
   async (error) => {
-    const originalRequest = error.config;
-
-    // Si es un error 401 y no es un reintento
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      // Si el error es en /auth/me, simplemente eliminamos el token
-      if (originalRequest.url === '/auth/me') {
-        removeToken();
-        window.location.href = '/login';
-        return Promise.reject(error);
-      }
-
-      // Para otras rutas, intentamos obtener el usuario actual
-      try {
-        const response = await axios.get('/auth/me');
-        if (response.data) {
-          // Si obtenemos el usuario, reintentamos la petición original
-          return axios(originalRequest);
-        } else {
-          // Si no hay usuario, eliminamos el token y redirigimos
-          removeToken();
-          window.location.href = '/login';
-        }
-      } catch (refreshError) {
-        // Si falla la verificación, eliminamos el token y redirigimos
-        removeToken();
-        window.location.href = '/login';
-      }
+    if (error.response?.status === 401) {
+      // Token expirado o inválido
+      removeToken();
+      window.location.href = '/login';
     }
-
     return Promise.reject(error);
   }
 );

@@ -1,10 +1,10 @@
 import { usePolling } from './usePolling';
 import axios from 'axios';
-import type { Folder } from '../types';
+import type { Folder } from '../types/folder';
 
 export function useFolders() {
   const fetchFolders = async () => {
-    const response = await axios.get<Folder[]>('/folders');
+    const response = await axios.get<Folder[]>('/api/folders');
     return response.data;
   };
 

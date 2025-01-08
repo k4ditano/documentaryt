@@ -1,10 +1,10 @@
 import { usePolling } from './usePolling';
 import axios from 'axios';
-import type { Page } from '../types';
+import type { Page } from '../types/page';
 
 export function usePages() {
   const fetchPages = async () => {
-    const response = await axios.get<Page[]>('/pages');
+    const response = await axios.get<Page[]>('/api/pages');
     return response.data;
   };
 

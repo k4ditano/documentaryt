@@ -1,6 +1,6 @@
 import { usePolling } from './usePolling';
 import axios from 'axios';
-import type { Reminder } from '../types';
+import type { Reminder } from '../types/reminder';
 
 export function useReminders() {
   const fetchReminders = async () => {
