@@ -1,30 +1,27 @@
 import axios from 'axios';
+import { getToken, removeToken } from './authService';
 
-// Configuración global de axios
-axios.defaults.baseURL = '/api';
-axios.defaults.withCredentials = true;
-axios.defaults.headers.common['Accept'] = 'application/json';
-axios.defaults.headers.common['Content-Type'] = 'application/json';
+// Configurar la URL base
+axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-// Interceptor para manejar tokens
-axios.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    if (!config.headers) {
-      config.headers = {};
+// Interceptor de solicitudes
+axios.interceptors.request.use(
+  (config) => {
+    const token = getToken();
+    if (token) {
+      if (!config.headers) {
+        config.headers = {};
+      }
+      config.headers.Authorization = `Bearer ${token}`;
     }
-    config.headers.Authorization = `Bearer ${token}`;
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
-  console.log('Request config:', {
-    url: config.url,
-    method: config.method,
-    headers: config.headers,
-    data: config.data
-  });
-  return config;
-});
+);
 
-// Interceptor para manejar errores
+// Interceptor de respuestas
 axios.interceptors.response.use(
   (response) => {
     console.log('Response:', {
@@ -34,16 +31,35 @@ axios.interceptors.response.use(
     });
     return response;
   },
-  (error) => {
-    console.error('Error en la respuesta:', {
-      url: error.config?.url,
-      status: error.response?.status,
-      data: error.response?.data,
-      message: error.message
-    });
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
+  async (error) => {
+    const originalRequest = error.config;
+
+    // Si es un error 401 y no es un reintento
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      // Si el error es en /auth/me, simplemente eliminamos el token
+      if (originalRequest.url === '/auth/me') {
+        removeToken();
+        return Promise.reject(error);
+      }
+
+      // Para otras rutas, intentamos obtener el usuario actual
+      try {
+        const response = await axios.get('/auth/me');
+        if (response.data) {
+          // Si obtenemos el usuario, reintentamos la petición original
+          return axios(originalRequest);
+        } else {
+          // Si no hay usuario, eliminamos el token
+          removeToken();
+        }
+      } catch (refreshError) {
+        // Si falla la verificación, eliminamos el token
+        removeToken();
+      }
     }
+
     return Promise.reject(error);
   }
 );

@@ -32,12 +32,18 @@ dotenv.config();
 
 const app = express();
 const httpServer = createServer(app);
+
+// Configuración de Socket.IO
 const io = new Server(httpServer, {
   cors: {
     origin: ['http://localhost:5173', 'http://localhost:3000', 'http://145.223.100.119', 'http://145.223.100.119:3001'],
     credentials: true,
-  }
+  },
+  path: '/socket.io'
 });
+
+// Crear namespace /api
+const apiNamespace = io.of('/api');
 
 const port = process.env.PORT || 3001;
 
@@ -57,11 +63,11 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
 
-// Socket.io middleware para autenticación
-io.use((socket, next) => {
+// Socket.IO middleware para autenticación
+apiNamespace.use((socket, next) => {
   const token = socket.handshake.auth.token;
   if (!token) {
-    return next(new Error('Authentication error'));
+    return next(new Error('Authentication error: No token provided'));
   }
 
   try {
@@ -69,19 +75,23 @@ io.use((socket, next) => {
     socket.userId = decoded.id;
     next();
   } catch (err) {
-    next(new Error('Authentication error'));
+    next(new Error('Authentication error: Invalid token'));
   }
 });
 
 // Manejo de conexiones de socket
-io.on('connection', (socket) => {
-  console.log(`Usuario ${socket.userId} conectado`);
+apiNamespace.on('connection', (socket) => {
+  console.log(`Usuario ${socket.userId} conectado al namespace /api`);
 
   // Unir al usuario a su sala personal
   socket.join(`user-${socket.userId}`);
 
   socket.on('disconnect', () => {
-    console.log(`Usuario ${socket.userId} desconectado`);
+    console.log(`Usuario ${socket.userId} desconectado del namespace /api`);
+  });
+
+  socket.on('error', (error) => {
+    console.error(`Error en socket del usuario ${socket.userId}:`, error);
   });
 });
 
@@ -89,9 +99,13 @@ io.on('connection', (socket) => {
 app.use((req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (token) {
-    console.log('Token encontrado:', token);
-  } else {
-    console.log('No se encontró token en la petición');
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      req.userId = decoded.id;
+      console.log('Token verificado para usuario:', decoded.id);
+    } catch (err) {
+      console.error('Error al verificar token:', err.message);
+    }
   }
   next();
 });
@@ -104,7 +118,7 @@ console.log('Registrando rutas...');
 
 // Función para emitir actualizaciones
 const emitUpdate = (userId, event, data) => {
-  io.to(`user-${userId}`).emit(event, data);
+  apiNamespace.to(`user-${userId}`).emit(event, data);
 };
 
 // Middleware para inyectar la función emitUpdate en las rutas
