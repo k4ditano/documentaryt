@@ -113,22 +113,25 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Obtener usuario actual
+// Ruta para obtener información del usuario actual
 router.get('/me', authenticateToken, async (req, res) => {
-  try {
-    const user = await db.getAsync('SELECT id, username, email FROM users WHERE id = ?', [req.userId]);
-    if (!user) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
-    }
+    try {
+        if (!req.userId) {
+            console.log('No se encontró ID de usuario');
+            return res.status(401).json({ error: 'Usuario no autenticado' });
+        }
 
-    res.json({
-      success: true,
-      user
-    });
-  } catch (error) {
-    console.error('Error al obtener usuario:', error);
-    res.status(500).json({ error: 'Error al obtener usuario' });
-  }
+        const user = await db.getAsync('SELECT id, username, email, created_at, updated_at FROM users WHERE id = ?', [req.userId]);
+        
+        if (!user) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+        
+        res.json(user);
+    } catch (error) {
+        console.error('Error al obtener usuario:', error);
+        res.status(500).json({ error: 'Error al obtener información del usuario' });
+    }
 });
 
 // Cerrar sesión

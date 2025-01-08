@@ -15,6 +15,11 @@ router.get('/test', (req, res) => {
 router.get('/', authenticateToken, async (req, res) => {
     console.log('GET /api/tasks - Obteniendo tareas para el usuario:', req.userId);
     try {
+        if (!req.userId) {
+            console.log('No se encontró ID de usuario');
+            return res.status(401).json({ error: 'Usuario no autenticado' });
+        }
+        
         const tasks = await db.allAsync(
             `SELECT * FROM tasks WHERE user_id = ? ORDER BY due_date ASC`,
             [req.userId]
