@@ -15,15 +15,33 @@ axios.interceptors.request.use((config) => {
     }
     config.headers.Authorization = `Bearer ${token}`;
   }
+  console.log('Request config:', {
+    url: config.url,
+    method: config.method,
+    headers: config.headers,
+    data: config.data
+  });
   return config;
 });
 
 // Interceptor para manejar errores
 axios.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('Response:', {
+      url: response.config.url,
+      status: response.status,
+      data: response.data
+    });
+    return response;
+  },
   (error) => {
+    console.error('Error en la respuesta:', {
+      url: error.config?.url,
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message
+    });
     if (error.response?.status === 401) {
-      // Limpiar token si la sesión ha expirado
       localStorage.removeItem('token');
     }
     return Promise.reject(error);
