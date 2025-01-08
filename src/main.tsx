@@ -5,6 +5,7 @@ import { CssBaseline } from '@mui/material'
 import theme from './utils/theme'
 import './index.css'
 import App from './App'
+import './services/axiosConfig'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

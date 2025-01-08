@@ -1,6 +1,7 @@
 import type { Page, Folder } from '../types/index';
+import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://145.223.100.119:3001/api';
+const API_URL = '/api';
 
 interface File {
   id: string;
@@ -63,19 +64,13 @@ const createBlock = (
 
 export const storageService = {
   async getPages(): Promise<Page[]> {
-    const response = await fetch(`${API_URL}/pages`, {
-      credentials: 'include',
-    });
-    if (!response.ok) throw new Error('Error al obtener las páginas');
-    return response.json();
+    const response = await axios.get<Page[]>(`${API_URL}/pages`);
+    return response.data;
   },
 
   async getPage(id: string): Promise<Page> {
-    const response = await fetch(`${API_URL}/pages/${id}`, {
-      credentials: 'include',
-    });
-    if (!response.ok) throw new Error('Error al obtener la página');
-    return response.json();
+    const response = await axios.get<Page>(`${API_URL}/pages/${id}`);
+    return response.data;
   },
 
   async createPage(title: string, parent_id: string | null = null): Promise<Page> {
@@ -84,25 +79,13 @@ export const storageService = {
       createBlock("paragraph", "", "2")
     ];
 
-    const response = await fetch(`${API_URL}/pages`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
-      body: JSON.stringify({
-        title,
-        parent_id,
-        content: JSON.stringify(initialBlocks),
-      }),
+    const response = await axios.post<Page>(`${API_URL}/pages`, {
+      title,
+      parent_id,
+      content: JSON.stringify(initialBlocks),
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
-      throw new Error(errorData.error || 'Error al crear la página');
-    }
-
-    const page = await response.json();
+    const page = response.data;
     
     // Asegurarse de que el contenido sea un string válido
     if (typeof page.content !== 'string') {
@@ -146,23 +129,9 @@ export const storageService = {
         updates.content = contentToSend;
       }
 
-      const response = await fetch(`${API_URL}/pages/${pageId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(updates),
-      });
+      const response = await axios.put<Page>(`${API_URL}/pages/${pageId}`, updates);
+      const updatedPage = response.data;
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
-        console.error('Error en la respuesta del servidor:', errorData);
-        throw new Error(errorData.error || 'Error al actualizar la página');
-      }
-
-      const updatedPage = await response.json();
-      
       if (!updatedPage || !updatedPage.id) {
         console.error('Respuesta inválida del servidor:', updatedPage);
         throw new Error('El servidor devolvió una respuesta inválida');
@@ -209,53 +178,26 @@ export const storageService = {
   },
 
   async deletePage(id: string): Promise<void> {
-    const response = await fetch(`${API_URL}/pages/${id}`, {
-      method: 'DELETE',
-      credentials: 'include',
-    });
-    if (!response.ok) throw new Error('Error al eliminar la página');
+    await axios.delete(`${API_URL}/pages/${id}`);
   },
 
   async getFolders(): Promise<Folder[]> {
-    const response = await fetch(`${API_URL}/folders`, {
-      credentials: 'include',
-    });
-    if (!response.ok) throw new Error('Error al obtener las carpetas');
-    return response.json();
+    const response = await axios.get<Folder[]>(`${API_URL}/folders`);
+    return response.data;
   },
 
   async createFolder(name: string, parent_id: string | null = null): Promise<Folder> {
-    const response = await fetch(`${API_URL}/folders`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
-      body: JSON.stringify({
-        name,
-        parent_id,
-      }),
+    const response = await axios.post<Folder>(`${API_URL}/folders`, {
+      name,
+      parent_id,
     });
-    if (!response.ok) throw new Error('Error al crear la carpeta');
-    return response.json();
+    return response.data;
   },
 
   async updateFolder(id: string, updates: Partial<Folder>): Promise<Folder> {
     try {
-      const response = await fetch(`${API_URL}/folders/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(updates),
-      });
-
-      if (!response.ok) {
-        throw new Error('Error al actualizar la carpeta');
-      }
-
-      return await response.json();
+      const response = await axios.put<Folder>(`${API_URL}/folders/${id}`, updates);
+      return response.data;
     } catch (error) {
       console.error('Error al actualizar carpeta:', error);
       throw new Error('Error al actualizar la carpeta');
@@ -263,64 +205,34 @@ export const storageService = {
   },
 
   async deleteFolder(id: string): Promise<void> {
-    const response = await fetch(`${API_URL}/folders/${id}`, {
-      method: 'DELETE',
-      credentials: 'include',
-    });
-    if (!response.ok) throw new Error('Error al eliminar la carpeta');
+    await axios.delete(`${API_URL}/folders/${id}`);
   },
 
   async uploadFile(formData: FormData, page_id: string): Promise<File> {
     console.log('Enviando archivo:', formData.get('file'), 'page_id:', page_id);
     
-    const response = await fetch(`${API_URL}/files/upload`, {
-      method: 'POST',
-      credentials: 'include',
-      body: formData,
+    const response = await axios.post<File>(`${API_URL}/files/upload`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
     });
 
-    if (!response.ok) {
-      console.error('Error en la respuesta:', await response.text());
-      throw new Error('Error al subir el archivo');
-    }
-
-    return response.json();
+    return response.data;
   },
 
   async getPageFiles(page_id: string): Promise<File[]> {
-    const response = await fetch(`${API_URL}/files/page/${page_id}`, {
-      credentials: 'include',
-    });
-    if (!response.ok) throw new Error('Error al obtener los archivos');
-    return response.json();
+    const response = await axios.get<File[]>(`${API_URL}/files/page/${page_id}`);
+    return response.data;
   },
 
   async deleteFile(id: string): Promise<void> {
-    const response = await fetch(`${API_URL}/files/${id}`, {
-      method: 'DELETE',
-      credentials: 'include',
-    });
-    if (!response.ok) throw new Error('Error al eliminar el archivo');
+    await axios.delete(`${API_URL}/files/${id}`);
   },
 
   async updatePositions(updates: Array<{ id: string; type: string; position: number; parent_id: string | null }>): Promise<any> {
     try {
-      const response = await fetch(`${API_URL}/positions/update`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(updates),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Error al actualizar posiciones');
-      }
-
-      const result = await response.json();
-      return result.data; // Retornamos los datos actualizados
+      const response = await axios.put<{data: any}>(`${API_URL}/positions/update`, updates);
+      return response.data.data;
     } catch (error) {
       console.error('Error al actualizar posiciones:', error);
       throw error;

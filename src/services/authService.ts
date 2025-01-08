@@ -1,20 +1,7 @@
 import type { User } from '../types/index';
+import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://145.223.100.119:3001/api';
-
-const getHeaders = () => {
-  const token = localStorage.getItem('token');
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  };
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  return headers;
-};
+const API_URL = '/api/auth';
 
 interface LoginResponse {
   user: User;
@@ -26,26 +13,25 @@ interface RegisterResponse {
   token: string;
 }
 
+interface AxiosErrorResponse {
+  response?: {
+    status: number;
+    data?: any;
+  };
+}
+
 class AuthService {
   async login(email: string, password: string): Promise<LoginResponse> {
     try {
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST',
-        headers: getHeaders(),
-        credentials: 'include',
-        body: JSON.stringify({ email, password }),
+      const response = await axios.post<LoginResponse>(`${API_URL}/login`, { 
+        email, 
+        password 
       });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Error de red' }));
-        throw new Error(error.message || `Error ${response.status}: ${response.statusText}`);
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
       }
-
-      const data = await response.json();
-      if (data.token) {
-        localStorage.setItem('token', data.token);
-      }
-      return data;
+      return response.data;
     } catch (error) {
       console.error('Error en login:', error);
       throw error instanceof Error ? error : new Error('Error al iniciar sesión');
@@ -54,23 +40,16 @@ class AuthService {
 
   async register(username: string, email: string, password: string): Promise<RegisterResponse> {
     try {
-      const response = await fetch(`${API_URL}/auth/register`, {
-        method: 'POST',
-        headers: getHeaders(),
-        credentials: 'include',
-        body: JSON.stringify({ username, email, password }),
+      const response = await axios.post<RegisterResponse>(`${API_URL}/register`, {
+        username,
+        email,
+        password
       });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Error de red' }));
-        throw new Error(error.message || `Error ${response.status}: ${response.statusText}`);
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
       }
-
-      const data = await response.json();
-      if (data.token) {
-        localStorage.setItem('token', data.token);
-      }
-      return data;
+      return response.data;
     } catch (error) {
       console.error('Error en registro:', error);
       throw error instanceof Error ? error : new Error('Error al registrar usuario');
@@ -79,16 +58,7 @@ class AuthService {
 
   async logout(): Promise<void> {
     try {
-      const response = await fetch(`${API_URL}/auth/logout`, {
-        method: 'POST',
-        headers: getHeaders(),
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Error al cerrar sesión');
-      }
+      await axios.post(`${API_URL}/logout`);
       localStorage.removeItem('token');
     } catch (error) {
       console.error('Error en logout:', error);
@@ -99,78 +69,39 @@ class AuthService {
 
   async getCurrentUser(): Promise<User | null> {
     try {
-      const response = await fetch(`${API_URL}/auth/me`, {
-        credentials: 'include',
-        headers: getHeaders()
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          localStorage.removeItem('token');
-          return null;
-        }
-        throw new Error('Error al obtener el usuario actual');
-      }
-
-      const data = await response.json();
-      return data.user;
+      const response = await axios.get<{user: User}>(`${API_URL}/me`);
+      return response.data.user;
     } catch (error) {
+      const axiosError = error as AxiosErrorResponse;
+      if (axiosError.response?.status === 401) {
+        localStorage.removeItem('token');
+        return null;
+      }
       console.error('Error al obtener el usuario actual:', error);
-      localStorage.removeItem('token');
       return null;
     }
   }
 
   async updateProfile(data: Partial<User>): Promise<User> {
-    const response = await fetch(`${API_URL}/auth/profile`, {
-      method: 'PUT',
-      headers: getHeaders(),
-      credentials: 'include',
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Error al actualizar el perfil');
-    }
-
-    return response.json();
+    const response = await axios.put<User>(`${API_URL}/profile`, data);
+    return response.data;
   }
 
   async updatePassword(currentPassword: string, newPassword: string): Promise<void> {
-    const response = await fetch(`${API_URL}/auth/password`, {
-      method: 'PUT',
-      headers: getHeaders(),
-      credentials: 'include',
-      body: JSON.stringify({ currentPassword, newPassword }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Error al actualizar la contraseña');
-    }
+    await axios.put(`${API_URL}/password`, { currentPassword, newPassword });
   }
 
   async uploadAvatar(file: File): Promise<User> {
     const formData = new FormData();
     formData.append('avatar', file);
 
-    const headers = getHeaders();
-    delete headers['Content-Type']; // Permitir que el navegador establezca el Content-Type correcto para FormData
-
-    const response = await fetch(`${API_URL}/auth/avatar`, {
-      method: 'POST',
-      headers,
-      credentials: 'include',
-      body: formData,
+    const response = await axios.post<User>(`${API_URL}/avatar`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
     });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Error al subir el avatar');
-    }
-
-    return response.json();
+    return response.data;
   }
 }
 
