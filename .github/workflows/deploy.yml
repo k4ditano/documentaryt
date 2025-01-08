@@ -53,6 +53,11 @@ jobs:
           echo "Instalando dependencias del frontend..."
           npm install --legacy-peer-deps
           
+          # Configurar variables de entorno del frontend
+          echo "Configurando variables de entorno del frontend..."
+          echo "VITE_API_URL=http://145.223.100.119:3001/api" > .env
+          echo "VITE_GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
+          
           # Construir el frontend
           echo "Construyendo frontend..."
           npm run build
@@ -67,8 +72,10 @@ jobs:
           echo "PORT=3001" > .env
           echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
           echo "JWT_EXPIRE=24h" >> .env
+          echo "COOKIE_EXPIRE=24" >> .env
           echo "NODE_ENV=production" >> .env
           echo "DB_PATH=/var/www/notion2_data/database.sqlite" >> .env
+          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
 
           # Asegurar permisos
           cd ..
