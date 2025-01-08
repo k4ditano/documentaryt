@@ -36,23 +36,23 @@ export const useTasks = (): UseTasksReturn => {
     fetchTasks();
 
     // Suscribirse a actualizaciones via websocket
-    socketService.subscribe('task:update', (data: Task) => {
+    socketService.on('task:update', (data: Task) => {
       setTasks(prev => prev.map(t => t.id === data.id ? data : t));
     });
 
-    socketService.subscribe('task:create', (data: Task) => {
+    socketService.on('task:create', (data: Task) => {
       setTasks(prev => [...prev, data]);
     });
 
-    socketService.subscribe('task:delete', (id: string) => {
+    socketService.on('task:delete', (id: string) => {
       setTasks(prev => prev.filter(t => t.id !== id));
     });
 
     return () => {
       // Limpiar suscripciones
-      socketService.unsubscribe('task:update', () => {});
-      socketService.unsubscribe('task:create', () => {});
-      socketService.unsubscribe('task:delete', () => {});
+      socketService.off('task:update');
+      socketService.off('task:create');
+      socketService.off('task:delete');
     };
   }, [fetchTasks]);
 

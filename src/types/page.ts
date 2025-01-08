@@ -7,13 +7,13 @@ export interface Page {
   created_at?: string;
   updated_at?: string;
   user_id?: number;
-  tags?: string;
+  tags?: string[];
 }
 
 export interface PageWithoutTags extends Omit<Page, 'tags'> {
-  tags?: string;
+  tags?: string[];
 }
 
 export type PageUpdate = Partial<Page> & {
-  tags?: string;
+  tags?: string[];
 }; 

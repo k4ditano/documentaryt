@@ -7,6 +7,7 @@ export * from './folder';
 export * from './notification';
 export * from './reminder';
 export * from './page';
+export * from './pdf';
 
 export interface UserSettings {
   theme: 'light' | 'dark';

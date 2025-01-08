@@ -14,15 +14,31 @@ const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY || '');
 const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
 
 export interface SearchResult {
-  pageId: string;
+  id: string;
+  type: 'page' | 'folder' | 'task';
   title: string;
+  excerpt: string;
+  matchType: 'title' | 'content' | 'tag';
   relevance: number;
   snippet: string;
-  matchType: 'exact' | 'partial' | 'related';
-  category: 'content' | 'title' | 'tag';
   context: string;
+  category: string;
   lastModified?: string;
   suggestion?: string;
+  pageId?: string;
+}
+
+export interface SearchResponse {
+  results: SearchResult[];
+  suggestedActions?: Array<{
+    type: 'create_page' | 'read_pdf' | 'link_pages' | 'expand_content' | 'organize_content' | 'add_tags' | 'merge_pages';
+    title: string;
+    description: string;
+    priority: 'high' | 'medium' | 'low';
+    relatedPageIds?: string[];
+    suggestedTags?: string[];
+    category?: string;
+  }>;
 }
 
 export interface SuggestedAction {

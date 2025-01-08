@@ -672,7 +672,7 @@ const Sidebar: FC<SidebarProps> = ({ open = false, onClose }) => {
 
   const handleNewPage = async () => {
     try {
-      const newPage = await createPage('Nueva página', null);
+      const newPage = await createPage({ title: 'Nueva página' });
       if (newPage?.id) {
         navigate(`/page/${newPage.id}`);
       }
@@ -684,7 +684,7 @@ const Sidebar: FC<SidebarProps> = ({ open = false, onClose }) => {
 
   const handleNewFolder = async () => {
     try {
-      const newFolder = await createFolder('Nueva carpeta', null);
+      const newFolder = await createFolder({ name: 'Nueva carpeta' });
       if (newFolder?.id) {
         const folderId = `folder-${newFolder.id}`;
         setExpandedFolders(prev => new Set([...prev, folderId]));

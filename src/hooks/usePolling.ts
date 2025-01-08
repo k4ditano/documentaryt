@@ -55,7 +55,7 @@ export function usePolling<T>(
 
   useEffect(() => {
     // Suscribirse a actualizaciones vía websocket
-    socketService.subscribe(`update:${key}`, () => {
+    socketService.on(`update:${key}`, () => {
       fetchData(true); // Forzar actualización al recibir evento
     });
 
@@ -72,7 +72,7 @@ export function usePolling<T>(
       if (timeoutRef.current) {
         clearInterval(timeoutRef.current);
       }
-      socketService.unsubscribe(`update:${key}`, () => {});
+      socketService.off(`update:${key}`);
     };
   }, [fetchData, immediate, interval, key]);
 
