@@ -15,7 +15,7 @@ class SocketService {
       return;
     }
 
-    const baseUrl = import.meta.env.VITE_API_URL || '';
+    const baseUrl = import.meta.env.VITE_API_URL.replace('/api', '') || '';
     console.log('Conectando a websocket en:', baseUrl);
 
     this.socket = io(baseUrl, {
@@ -24,7 +24,8 @@ class SocketService {
       reconnection: true,
       reconnectionAttempts: this.maxReconnectAttempts,
       reconnectionDelay: 1000,
-      timeout: 10000
+      timeout: 10000,
+      path: '/socket.io/'
     });
 
     this.setupEventHandlers();

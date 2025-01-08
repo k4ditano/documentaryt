@@ -36,81 +36,9 @@ console.log(`Puerto configurado: ${port}`);
 const app = express();
 const httpServer = createServer(app);
 
-// Configuración de Socket.IO
-const io = new Server(httpServer, {
-  cors: {
-    origin: "*",  // Más permisivo para desarrollo
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-  },
-  path: '/socket.io/',
-  transports: ['websocket', 'polling'],
-  allowEIO3: true,
-  pingTimeout: 60000,
-  pingInterval: 25000,
-  connectTimeout: 45000,  // Aumentar timeout de conexión
-  maxHttpBufferSize: 1e8  // Aumentar tamaño del buffer
-});
-
-// Middleware para Socket.IO
-io.use((socket, next) => {
-  console.log('Intento de conexión websocket...');
-  console.log('Headers de conexión:', socket.handshake.headers);
-  const token = socket.handshake.auth.token;
-  if (!token) {
-    console.log('No se proporcionó token en la conexión websocket');
-    return next(new Error('Authentication error: No token provided'));
-  }
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    socket.userId = decoded.id;
-    console.log(`Token websocket verificado para usuario: ${decoded.id}`);
-    next();
-  } catch (err) {
-    console.log('Error al verificar token websocket:', err.message);
-    next(new Error('Authentication error: Invalid token'));
-  }
-});
-
-// Manejo de conexiones de socket
-io.on('connection', (socket) => {
-  console.log(`Usuario ${socket.userId} conectado. ID Socket: ${socket.id}`);
-  console.log('Handshake headers:', socket.handshake.headers);
-  console.log('Transport usado:', socket.conn.transport.name);
-
-  // Unir al usuario a su sala personal
-  socket.join(`user-${socket.userId}`);
-  console.log(`Usuario unido a sala: user-${socket.userId}`);
-
-  socket.on('disconnect', (reason) => {
-    console.log(`Usuario ${socket.userId} desconectado. Razón: ${reason}`);
-  });
-
-  socket.on('error', (error) => {
-    console.error(`Error en socket del usuario ${socket.userId}:`, error);
-  });
-
-  // Enviar confirmación de conexión al cliente
-  socket.emit('connected', { userId: socket.userId });
-});
-
-// Función para emitir actualizaciones
-const emitUpdate = (userId, event, data) => {
-  console.log(`Emitiendo evento ${event} para usuario ${userId}`);
-  io.to(`user-${userId}`).emit(event, data);
-};
-
-// Middleware para inyectar la función emitUpdate en las rutas
-app.use((req, res, next) => {
-  req.emitUpdate = emitUpdate;
-  next();
-});
-
 // Configuración de CORS
 const corsOptions = {
-  origin: "*",  // Más permisivo para desarrollo
+  origin: ["http://145.223.100.119", "http://145.223.100.119:3001"],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
@@ -174,6 +102,78 @@ app.get('*', (req, res) => {
 app.use('/api/*', (req, res) => {
   console.log(`Ruta API no encontrada: ${req.method} ${req.path}`);
   res.status(404).json({ error: 'Ruta no encontrada' });
+});
+
+// Configuración de Socket.IO
+const io = new Server(httpServer, {
+  cors: {
+    origin: ["http://145.223.100.119", "http://145.223.100.119:3001"],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+  },
+  path: '/socket.io/',
+  transports: ['websocket', 'polling'],
+  allowEIO3: true,
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  connectTimeout: 45000,
+  maxHttpBufferSize: 1e8
+});
+
+// Middleware para Socket.IO
+io.use((socket, next) => {
+  console.log('Intento de conexión websocket...');
+  console.log('Headers de conexión:', socket.handshake.headers);
+  const token = socket.handshake.auth.token;
+  if (!token) {
+    console.log('No se proporcionó token en la conexión websocket');
+    return next(new Error('Authentication error: No token provided'));
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    socket.userId = decoded.id;
+    console.log(`Token websocket verificado para usuario: ${decoded.id}`);
+    next();
+  } catch (err) {
+    console.log('Error al verificar token websocket:', err.message);
+    next(new Error('Authentication error: Invalid token'));
+  }
+});
+
+// Manejo de conexiones de socket
+io.on('connection', (socket) => {
+  console.log(`Usuario ${socket.userId} conectado. ID Socket: ${socket.id}`);
+  console.log('Handshake headers:', socket.handshake.headers);
+  console.log('Transport usado:', socket.conn.transport.name);
+
+  // Unir al usuario a su sala personal
+  socket.join(`user-${socket.userId}`);
+  console.log(`Usuario unido a sala: user-${socket.userId}`);
+
+  socket.on('disconnect', (reason) => {
+    console.log(`Usuario ${socket.userId} desconectado. Razón: ${reason}`);
+  });
+
+  socket.on('error', (error) => {
+    console.error(`Error en socket del usuario ${socket.userId}:`, error);
+  });
+
+  // Enviar confirmación de conexión al cliente
+  socket.emit('connected', { userId: socket.userId });
+});
+
+// Función para emitir actualizaciones
+const emitUpdate = (userId, event, data) => {
+  console.log(`Emitiendo evento ${event} para usuario ${userId}`);
+  io.to(`user-${userId}`).emit(event, data);
+};
+
+// Middleware para inyectar la función emitUpdate en las rutas
+app.use((req, res, next) => {
+  req.emitUpdate = emitUpdate;
+  next();
 });
 
 // Iniciar el servidor HTTP con socket.io
