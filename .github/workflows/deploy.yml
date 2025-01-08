@@ -88,6 +88,11 @@ jobs:
           # Asegurar que Apache está detenido
           sudo systemctl stop apache2
 
+          # Crear directorios necesarios
+          echo "Creando directorios necesarios..."
+          sudo mkdir -p /var/log/apache2
+          sudo chown -R www-data:www-data /var/log/apache2
+
           # Configurar Apache
           echo "Configurando Apache..."
           sudo tee /etc/apache2/sites-available/notion2.conf > /dev/null << 'EOL'
@@ -110,8 +115,8 @@ jobs:
                   DirectoryIndex index.html
               </Directory>
 
-              ErrorLog \${APACHE_LOG_DIR}/notion2-error.log
-              CustomLog \${APACHE_LOG_DIR}/notion2-access.log combined
+              ErrorLog /var/log/apache2/notion2-error.log
+              CustomLog /var/log/apache2/notion2-access.log combined
           </VirtualHost>
           EOL
 
