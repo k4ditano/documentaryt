@@ -69,6 +69,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const register = async (username: string, email: string, password: string) => {
+    try {
+      setLoading(true);
+      const response = await authService.register(username, email, password);
+      setUser(response.user);
+      setIsAuthenticated(true);
+      setError(null);
+    } catch (error) {
+      console.error('Error al registrar usuario:', error);
+      setError('Error al registrar usuario');
+      setIsAuthenticated(false);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = async () => {
     try {
       setLoading(true);
@@ -86,44 +103,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const value = {
+  const updateProfile = async (data: Partial<User>) => {
+    try {
+      if (!user) throw new Error('No hay usuario autenticado');
+      const updatedUser = await authService.getCurrentUser(); // Temporal hasta implementar updateProfile
+      if (updatedUser) {
+        setUser(updatedUser);
+        setError(null);
+      }
+    } catch (error) {
+      console.error('Error al actualizar perfil:', error);
+      setError('Error al actualizar perfil');
+      throw error;
+    }
+  };
+
+  const updatePassword = async (currentPassword: string, newPassword: string) => {
+    try {
+      if (!user) throw new Error('No hay usuario autenticado');
+      // Temporal hasta implementar updatePassword
+      setError(null);
+    } catch (error) {
+      console.error('Error al actualizar contraseña:', error);
+      setError('Error al actualizar contraseña');
+      throw error;
+    }
+  };
+
+  const uploadAvatar = async (file: File) => {
+    try {
+      if (!user) throw new Error('No hay usuario autenticado');
+      // Temporal hasta implementar uploadAvatar
+      setError(null);
+    } catch (error) {
+      console.error('Error al subir avatar:', error);
+      setError('Error al subir avatar');
+      throw error;
+    }
+  };
+
+  const clearError = () => setError(null);
+
+  const value: AuthContextType = {
     user,
     loading,
     error,
     isAuthenticated,
     login,
-    register: async (username: string, email: string, password: string) => {
-      try {
-        setLoading(true);
-        const response = await authService.register(username, email, password);
-        setUser(response.user);
-        setIsAuthenticated(true);
-        setError(null);
-      } catch (error) {
-        console.error('Error al registrar usuario:', error);
-        setError('Error al registrar usuario');
-        setIsAuthenticated(false);
-        throw error;
-      } finally {
-        setLoading(false);
-      }
-    },
+    register,
     logout,
-    updateProfile: async (data: Partial<User>) => {
-      try {
-        if (!user) throw new Error('No hay usuario autenticado');
-        const updatedUser = await authService.updateProfile(data);
-        setUser(updatedUser);
-        setError(null);
-      } catch (error) {
-        console.error('Error al actualizar perfil:', error);
-        setError('Error al actualizar perfil');
-        throw error;
-      }
-    },
+    updateProfile,
     updatePassword,
     uploadAvatar,
-    clearError: () => setError(null)
+    clearError
   };
 
   if (loading) {
