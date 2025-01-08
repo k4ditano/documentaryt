@@ -49,8 +49,16 @@ jobs:
           echo "Construyendo frontend..."
           npm run build
           
-          # Verificar que se creó el directorio dist
-          ls -la dist/
+          # Verificar la construcción del frontend
+          echo "Verificando archivos del frontend..."
+          ls -la
+          if [ -d "dist" ]; then
+            echo "Contenido del directorio dist:"
+            ls -la dist/
+          else
+            echo "Error: El directorio dist no existe"
+            exit 1
+          fi
 
           # Instalar dependencias del backend
           echo "Instalando dependencias del backend..."
@@ -99,7 +107,8 @@ jobs:
           sudo a2enmod proxy_http
           sudo a2enmod rewrite
 
-          # Habilitar el sitio y reiniciar Apache
+          # Deshabilitar el sitio por defecto y habilitar el nuevo
+          sudo a2dissite 000-default.conf
           sudo a2ensite notion2.conf
           sudo systemctl restart apache2
 
