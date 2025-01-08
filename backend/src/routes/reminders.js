@@ -1,6 +1,6 @@
 import express from 'express';
 import { simpleReminderService } from '../services/simpleReminderService.js';
-import authenticateToken from '../middleware/auth.js';
+import {authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
