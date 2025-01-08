@@ -79,7 +79,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
                 priority, 
                 JSON.stringify(Array.isArray(linked_pages) ? linked_pages : []),
                 req.params.id, 
-                req.user.id
+                req.userId
             ]
         );
 
@@ -112,7 +112,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     try {
         await db.runAsync(
             'DELETE FROM tasks WHERE id = ? AND user_id = ?',
-            [req.params.id, req.user.id]
+            [req.params.id, req.userId]
         );
         res.json({ message: 'Tarea eliminada correctamente' });
     } catch (error) {
@@ -128,7 +128,7 @@ router.get('/calendar/:start/:end', authenticateToken, async (req, res) => {
              WHERE user_id = ? 
              AND due_date BETWEEN ? AND ?
              ORDER BY due_date ASC`,
-            [req.user.id, req.params.start, req.params.end]
+            [req.userId, req.params.start, req.params.end]
         );
         
         // Parsear las páginas enlazadas para cada tarea

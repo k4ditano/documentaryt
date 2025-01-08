@@ -19,7 +19,7 @@ router.get('/', authenticateToken, async (req, res) => {
       FROM pages 
       WHERE user_id = ? 
       ORDER BY updated_at DESC`,
-      [req.user.id]
+      [req.userId]
     );
     res.json(pages || []); // Asegurarnos de devolver un array vacío si no hay páginas
   } catch (error) {
@@ -91,7 +91,7 @@ router.post('/', authenticateToken, async (req, res) => {
 
     const result = await db.runAsync(
       'INSERT INTO pages (title, content, parent_id, user_id, created_at, updated_at) VALUES (?, ?, ?, ?, datetime("now"), datetime("now"))',
-      [title, validContent, parent_id, req.user.id]
+      [title, validContent, parent_id, req.userId]
     );
     
     const newPage = await db.getAsync(
@@ -136,7 +136,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     // Obtener la página actual
     const currentPage = await db.getAsync(
       'SELECT title, content, parent_id FROM pages WHERE id = ? AND user_id = ?',
-      [id, req.user.id]
+      [id, req.userId]
     );
 
     if (!currentPage) {
@@ -169,7 +169,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     // Actualizar la página
     await db.runAsync(
       'UPDATE pages SET title = ?, content = ?, parent_id = ?, updated_at = datetime("now") WHERE id = ? AND user_id = ?',
-      [newTitle, newContent, newParentId, id, req.user.id]
+      [newTitle, newContent, newParentId, id, req.userId]
     );
 
     // Obtener la página actualizada
@@ -184,7 +184,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
         strftime('%Y-%m-%dT%H:%M:%S.000Z', updated_at) as updated_at
       FROM pages 
       WHERE id = ? AND user_id = ?`,
-      [id, req.user.id]
+      [id, req.userId]
     );
 
     if (!updatedPage) {
@@ -219,7 +219,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 // Eliminar una página
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
-    await db.runAsync('DELETE FROM pages WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
+    await db.runAsync('DELETE FROM pages WHERE id = ? AND user_id = ?', [req.params.id, req.userId]);
     res.json({ message: 'Página eliminada correctamente' });
   } catch (error) {
     console.error('Error al eliminar página:', error);
@@ -241,7 +241,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
         strftime('%Y-%m-%dT%H:%M:%S.000Z', updated_at) as updated_at
       FROM pages 
       WHERE id = ? AND user_id = ?`,
-      [req.params.id, req.user.id]
+      [req.params.id, req.userId]
     );
 
     if (!page) {
