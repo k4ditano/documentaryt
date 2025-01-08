@@ -39,7 +39,7 @@ const httpServer = createServer(app);
 // Configuración de Socket.IO
 const io = new Server(httpServer, {
   cors: {
-    origin: true,
+    origin: "*",  // Más permisivo para desarrollo
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
@@ -48,12 +48,15 @@ const io = new Server(httpServer, {
   transports: ['websocket', 'polling'],
   allowEIO3: true,
   pingTimeout: 60000,
-  pingInterval: 25000
+  pingInterval: 25000,
+  connectTimeout: 45000,  // Aumentar timeout de conexión
+  maxHttpBufferSize: 1e8  // Aumentar tamaño del buffer
 });
 
 // Middleware para Socket.IO
 io.use((socket, next) => {
   console.log('Intento de conexión websocket...');
+  console.log('Headers de conexión:', socket.handshake.headers);
   const token = socket.handshake.auth.token;
   if (!token) {
     console.log('No se proporcionó token en la conexión websocket');
@@ -73,10 +76,13 @@ io.use((socket, next) => {
 
 // Manejo de conexiones de socket
 io.on('connection', (socket) => {
-  console.log(`Usuario ${socket.userId} conectado`);
+  console.log(`Usuario ${socket.userId} conectado. ID Socket: ${socket.id}`);
+  console.log('Handshake headers:', socket.handshake.headers);
+  console.log('Transport usado:', socket.conn.transport.name);
 
   // Unir al usuario a su sala personal
   socket.join(`user-${socket.userId}`);
+  console.log(`Usuario unido a sala: user-${socket.userId}`);
 
   socket.on('disconnect', (reason) => {
     console.log(`Usuario ${socket.userId} desconectado. Razón: ${reason}`);
@@ -85,6 +91,9 @@ io.on('connection', (socket) => {
   socket.on('error', (error) => {
     console.error(`Error en socket del usuario ${socket.userId}:`, error);
   });
+
+  // Enviar confirmación de conexión al cliente
+  socket.emit('connected', { userId: socket.userId });
 });
 
 // Función para emitir actualizaciones
@@ -101,7 +110,7 @@ app.use((req, res, next) => {
 
 // Configuración de CORS
 const corsOptions = {
-  origin: true,
+  origin: "*",  // Más permisivo para desarrollo
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
@@ -114,6 +123,11 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 
 // Middleware para verificar el token
 app.use((req, res, next) => {
@@ -165,5 +179,7 @@ app.use('/api/*', (req, res) => {
 // Iniciar el servidor HTTP con socket.io
 httpServer.listen(port, () => {
   console.log(`Servidor escuchando en el puerto ${port}`);
+  console.log(`CORS configurado con origin: ${corsOptions.origin}`);
+  console.log(`Socket.IO configurado con origin: ${io.opts.cors.origin}`);
   initializeDatabase();
 }); 
