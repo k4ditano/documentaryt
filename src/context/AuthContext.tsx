@@ -25,26 +25,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
-    try {
-      const userData = await authService.getCurrentUser();
-      if (userData) {
-        setUser(userData);
-        setIsAuthenticated(true);
+    const initAuth = async () => {
+      try {
+        setLoading(true);
+        const token = authService.getToken();
+        if (token) {
+          const userData = await authService.getCurrentUser();
+          if (userData) {
+            setUser(userData);
+            setIsAuthenticated(true);
+          } else {
+            // Si no hay usuario pero hay token, limpiar el token
+            authService.removeToken();
+            setIsAuthenticated(false);
+          }
+        }
+      } catch (error) {
+        console.error('Error al inicializar autenticación:', error);
+        authService.removeToken();
+        setIsAuthenticated(false);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Error al verificar autenticación:', error);
-      setError('Error al verificar autenticación');
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    initAuth();
+  }, []);
 
   const login = async (email: string, password: string) => {
     try {
+      setLoading(true);
       const response = await authService.login(email, password);
       setUser(response.user);
       setIsAuthenticated(true);
@@ -52,92 +62,76 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Error al iniciar sesión:', error);
       setError('Credenciales inválidas');
+      setIsAuthenticated(false);
       throw error;
-    }
-  };
-
-  const register = async (username: string, email: string, password: string) => {
-    try {
-      const response = await authService.register(username, email, password);
-      setUser(response.user);
-      setIsAuthenticated(true);
-      setError(null);
-    } catch (error) {
-      console.error('Error al registrar usuario:', error);
-      setError('Error al registrar usuario');
-      throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   const logout = async () => {
     try {
+      setLoading(true);
       await authService.logout();
       setUser(null);
       setIsAuthenticated(false);
       setError(null);
+      window.location.href = '/login';
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
       setError('Error al cerrar sesión');
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
-  const updateProfile = async (data: Partial<User>) => {
-    try {
-      if (!user) throw new Error('No hay usuario autenticado');
-      const updatedUser = await authService.updateProfile(data);
-      setUser(updatedUser);
-      setError(null);
-    } catch (error) {
-      console.error('Error al actualizar perfil:', error);
-      setError('Error al actualizar perfil');
-      throw error;
-    }
+  const value = {
+    user,
+    loading,
+    error,
+    isAuthenticated,
+    login,
+    register: async (username: string, email: string, password: string) => {
+      try {
+        setLoading(true);
+        const response = await authService.register(username, email, password);
+        setUser(response.user);
+        setIsAuthenticated(true);
+        setError(null);
+      } catch (error) {
+        console.error('Error al registrar usuario:', error);
+        setError('Error al registrar usuario');
+        setIsAuthenticated(false);
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    logout,
+    updateProfile: async (data: Partial<User>) => {
+      try {
+        if (!user) throw new Error('No hay usuario autenticado');
+        const updatedUser = await authService.updateProfile(data);
+        setUser(updatedUser);
+        setError(null);
+      } catch (error) {
+        console.error('Error al actualizar perfil:', error);
+        setError('Error al actualizar perfil');
+        throw error;
+      }
+    },
+    updatePassword,
+    uploadAvatar,
+    clearError: () => setError(null)
   };
 
-  const updatePassword = async (currentPassword: string, newPassword: string) => {
-    try {
-      if (!user) throw new Error('No hay usuario autenticado');
-      await authService.updatePassword(currentPassword, newPassword);
-      setError(null);
-    } catch (error) {
-      console.error('Error al actualizar contraseña:', error);
-      setError('Error al actualizar contraseña');
-      throw error;
-    }
-  };
-
-  const uploadAvatar = async (file: File) => {
-    try {
-      if (!user) throw new Error('No hay usuario autenticado');
-      const updatedUser = await authService.uploadAvatar(file);
-      setUser(updatedUser);
-      setError(null);
-    } catch (error) {
-      console.error('Error al subir avatar:', error);
-      setError('Error al subir avatar');
-      throw error;
-    }
-  };
-
-  const clearError = () => {
-    setError(null);
-  };
+  if (loading) {
+    return <div>Cargando...</div>;
+  }
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      loading,
-      error,
-      isAuthenticated,
-      login,
-      register,
-      logout,
-      updateProfile,
-      updatePassword,
-      uploadAvatar,
-      clearError
-    }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
