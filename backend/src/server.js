@@ -36,41 +36,20 @@ const httpServer = createServer(app);
 // Configuración de Socket.IO
 const io = new Server(httpServer, {
   cors: {
-    origin: ['http://localhost:5173', 'http://localhost:3000', 'http://145.223.100.119', 'http://145.223.100.119:3001'],
+    origin: true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
   },
   path: '/socket.io/',
-  transports: ['websocket'],
+  transports: ['websocket', 'polling'],
   allowEIO3: true,
   pingTimeout: 60000,
   pingInterval: 25000
 });
 
-// Crear namespace /api
-const apiNamespace = io.of('/api');
-
-const port = process.env.PORT || 3001;
-
-// Configuración de CORS
-const corsOptions = {
-  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://145.223.100.119', 'http://145.223.100.119:3001'],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
-  exposedHeaders: ['Set-Cookie'],
-};
-
-app.use(cors(corsOptions));
-
-// Parsear JSON y URL-encoded bodies
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-app.use(cookieParser());
-
-// Socket.IO middleware para autenticación
-apiNamespace.use((socket, next) => {
+// Middleware para Socket.IO
+io.use((socket, next) => {
   console.log('Intento de conexión websocket...');
   const token = socket.handshake.auth.token;
   if (!token) {
@@ -90,20 +69,48 @@ apiNamespace.use((socket, next) => {
 });
 
 // Manejo de conexiones de socket
-apiNamespace.on('connection', (socket) => {
-  console.log(`Usuario ${socket.userId} conectado al namespace /api`);
+io.on('connection', (socket) => {
+  console.log(`Usuario ${socket.userId} conectado`);
 
   // Unir al usuario a su sala personal
   socket.join(`user-${socket.userId}`);
 
   socket.on('disconnect', (reason) => {
-    console.log(`Usuario ${socket.userId} desconectado del namespace /api. Razón: ${reason}`);
+    console.log(`Usuario ${socket.userId} desconectado. Razón: ${reason}`);
   });
 
   socket.on('error', (error) => {
     console.error(`Error en socket del usuario ${socket.userId}:`, error);
   });
 });
+
+// Función para emitir actualizaciones
+const emitUpdate = (userId, event, data) => {
+  console.log(`Emitiendo evento ${event} para usuario ${userId}`);
+  io.to(`user-${userId}`).emit(event, data);
+};
+
+// Middleware para inyectar la función emitUpdate en las rutas
+app.use((req, res, next) => {
+  req.emitUpdate = emitUpdate;
+  next();
+});
+
+// Configuración de CORS
+const corsOptions = {
+  origin: true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
+  exposedHeaders: ['Set-Cookie'],
+};
+
+app.use(cors(corsOptions));
+
+// Parsear JSON y URL-encoded bodies
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(cookieParser());
 
 // Middleware para verificar el token
 app.use((req, res, next) => {
@@ -125,18 +132,6 @@ app.use('/uploads', express.static(uploadsDir));
 
 // Rutas API con soporte para websockets
 console.log('Registrando rutas...');
-
-// Función para emitir actualizaciones
-const emitUpdate = (userId, event, data) => {
-  console.log(`Emitiendo evento ${event} para usuario ${userId}`);
-  apiNamespace.to(`user-${userId}`).emit(event, data);
-};
-
-// Middleware para inyectar la función emitUpdate en las rutas
-app.use((req, res, next) => {
-  req.emitUpdate = emitUpdate;
-  next();
-});
 
 app.use('/api/auth', authRoutes);
 app.use('/api/pages', pagesRoutes);

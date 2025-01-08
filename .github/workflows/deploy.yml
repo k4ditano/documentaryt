@@ -108,7 +108,16 @@ jobs:
               Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
               Header set Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization"
 
+              # Configuración para WebSocket
+              RewriteEngine On
+              RewriteCond %{HTTP:Upgrade} websocket [NC]
+              RewriteCond %{HTTP:Connection} upgrade [NC]
+              RewriteRule /socket.io/(.*) ws://localhost:3001/socket.io/$1 [P,L]
+
               # Configuración del proxy para la API
+              ProxyPass /socket.io/ ws://localhost:3001/socket.io/
+              ProxyPassReverse /socket.io/ ws://localhost:3001/socket.io/
+              
               ProxyPass /api http://localhost:3001/api
               ProxyPassReverse /api http://localhost:3001/api
 
@@ -135,6 +144,7 @@ jobs:
           # Habilitar módulos de Apache necesarios
           sudo a2enmod proxy
           sudo a2enmod proxy_http
+          sudo a2enmod proxy_wstunnel
           sudo a2enmod rewrite
           sudo a2enmod headers
 

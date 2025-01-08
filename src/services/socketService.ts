@@ -27,18 +27,18 @@ class SocketService {
 
     const isProduction = window.location.hostname !== 'localhost';
     const baseURL = isProduction 
-      ? 'http://145.223.100.119'
+      ? window.location.origin
       : 'http://localhost:3001';
 
     try {
-      this.socket = io(baseURL + '/api', {
+      this.socket = io(baseURL, {
         auth: { token },
-        transports: ['websocket'],
-        path: '/socket.io',
+        transports: ['websocket', 'polling'],
+        path: '/socket.io/',
         reconnection: true,
         reconnectionAttempts: this.MAX_RECONNECT_ATTEMPTS,
         reconnectionDelay: 1000,
-        timeout: 5000,
+        timeout: 10000,
         withCredentials: true
       });
 
@@ -55,7 +55,6 @@ class SocketService {
       this.socket.on('disconnect', (reason) => {
         console.log('Desconectado del servidor de websockets:', reason);
         if (reason === 'io server disconnect') {
-          // El servidor forzó la desconexión
           this.socket?.connect();
         }
       });
