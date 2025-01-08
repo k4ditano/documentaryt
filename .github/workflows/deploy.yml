@@ -29,6 +29,12 @@ jobs:
           # Crear directorio para la base de datos si no existe
           mkdir -p /var/www/notion2_data
 
+          # Detener la aplicación actual
+          pm2 delete notion2 || true
+          
+          # Detener Apache
+          sudo systemctl stop apache2
+
           # Eliminar el directorio anterior si existe
           rm -rf notion2
           
@@ -47,33 +53,16 @@ jobs:
           echo "Instalando dependencias del frontend..."
           npm install --legacy-peer-deps
           
-          # Modificar el script de construcción para ignorar errores de TypeScript
-          sed -i 's/"build": "tsc && vite build"/"build": "vite build"/' package.json
-          
+          # Construir el frontend
           echo "Construyendo frontend..."
           npm run build
-
-          # Verificar la construcción del frontend
-          echo "Verificando archivos del frontend..."
-          ls -la
-          if [ -d "dist" ]; then
-            echo "Contenido del directorio dist:"
-            ls -la dist/
-            echo "Contenido de index.html:"
-            cat dist/index.html
-          else
-            echo "Error: El directorio dist no existe"
-            exit 1
-          fi
 
           # Instalar dependencias del backend
           echo "Instalando dependencias del backend..."
           cd backend
-          rm -f package-lock.json
-          npm cache clean --force
           npm install --legacy-peer-deps
 
-          # Crear archivo .env en el directorio backend
+          # Configurar variables de entorno del backend
           echo "Configurando variables de entorno..."
           echo "PORT=3001" > .env
           echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
@@ -81,121 +70,31 @@ jobs:
           echo "NODE_ENV=production" >> .env
           echo "DB_PATH=/var/www/notion2_data/database.sqlite" >> .env
 
-          # Verificar estado de Apache
-          echo "Verificando estado de Apache..."
-          sudo systemctl status apache2 || true
-          
-          # Asegurar que Apache está detenido
-          sudo systemctl stop apache2
-
-          # Crear directorios necesarios
-          echo "Creando directorios necesarios..."
-          sudo mkdir -p /var/log/apache2
-          sudo chown -R www-data:www-data /var/log/apache2
-
-          # Configurar Apache
-          echo "Configurando Apache..."
-          sudo tee /etc/apache2/sites-available/notion2.conf > /dev/null << 'EOL'
-          <VirtualHost *:80>
-              ServerName 145.223.100.119
-              DocumentRoot /var/www/notion2/dist
-
-              ProxyPreserveHost On
-              ProxyRequests Off
-
-              # Configuración de CORS
-              Header set Access-Control-Allow-Origin "*"
-              Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-              Header set Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-
-              # Configuración para WebSocket
-              RewriteEngine On
-              RewriteCond %{HTTP:Upgrade} websocket [NC]
-              RewriteCond %{HTTP:Connection} upgrade [NC]
-              RewriteRule /socket.io/(.*) ws://localhost:3001/socket.io/$1 [P,L]
-
-              # Configuración del proxy para la API
-              ProxyPass /socket.io/ ws://localhost:3001/socket.io/
-              ProxyPassReverse /socket.io/ ws://localhost:3001/socket.io/
-              
-              ProxyPass /api http://localhost:3001/api
-              ProxyPassReverse /api http://localhost:3001/api
-
-              <Directory /var/www/notion2/dist>
-                  Options Indexes FollowSymLinks MultiViews
-                  AllowOverride All
-                  Require all granted
-                  DirectoryIndex index.html
-                  
-                  # Reglas de rewrite para SPA
-                  RewriteEngine On
-                  RewriteBase /
-                  RewriteRule ^index\.html$ - [L]
-                  RewriteCond %{REQUEST_FILENAME} !-f
-                  RewriteCond %{REQUEST_FILENAME} !-d
-                  RewriteRule . /index.html [L]
-              </Directory>
-
-              ErrorLog /var/log/apache2/notion2-error.log
-              CustomLog /var/log/apache2/notion2-access.log combined
-          </VirtualHost>
-          EOL
-
-          # Habilitar módulos de Apache necesarios
-          sudo a2enmod proxy
-          sudo a2enmod proxy_http
-          sudo a2enmod proxy_wstunnel
-          sudo a2enmod rewrite
-          sudo a2enmod headers
-
-          # Deshabilitar el sitio por defecto y habilitar el nuevo
-          sudo a2dissite 000-default.conf
-          sudo a2ensite notion2.conf
-
-          # Verificar configuración de Apache
-          echo "Verificando configuración de Apache..."
-          sudo apache2ctl configtest
-
-          # Reiniciar Apache
-          echo "Reiniciando Apache..."
-          sudo systemctl restart apache2
-          sudo systemctl status apache2
-
           # Asegurar permisos
           cd ..
-          chmod -R 755 /var/www/notion2
-          chmod -R 755 /var/www/notion2_data
-          chmod 644 backend/.env
+          sudo chown -R www-data:www-data /var/www/notion2
+          sudo chown -R www-data:www-data /var/www/notion2_data
+          sudo chmod -R 755 /var/www/notion2
+          sudo chmod -R 755 /var/www/notion2_data
+          sudo chmod 644 backend/.env
 
-          # Crear archivo .htaccess en el directorio dist
-          echo "Creando .htaccess..."
-          cat > dist/.htaccess << 'EOL'
-          <IfModule mod_rewrite.c>
-            RewriteEngine On
-            RewriteBase /
-            RewriteRule ^index\.html$ - [L]
-            RewriteCond %{REQUEST_FILENAME} !-f
-            RewriteCond %{REQUEST_FILENAME} !-d
-            RewriteRule . /index.html [L]
-          </IfModule>
-          EOL
-
-          # Reiniciar aplicación con PM2
-          echo "Reiniciando aplicación..."
-          pm2 delete notion2 || true
+          # Iniciar la aplicación con PM2
           cd backend
           NODE_ENV=production pm2 start src/server.js --name notion2
 
-          # Mostrar estado de PM2
-          echo "Estado de PM2:"
-          pm2 list
-          
-          # Mostrar logs iniciales
-          echo "Logs de la aplicación:"
-          pm2 logs notion2 --lines 20 || true
+          # Esperar a que la aplicación esté en línea
+          echo "Esperando a que la aplicación esté en línea..."
+          sleep 10
 
-          # Verificar que los servicios están corriendo
-          echo "Verificando servicios..."
+          # Verificar el estado de PM2
+          pm2 list
+          pm2 logs notion2 --lines 20
+
+          # Reiniciar Apache
+          sudo systemctl restart apache2
+          
+          # Verificar el estado de Apache
           sudo systemctl status apache2
-          curl -v http://localhost:3001/api/health || true
-          curl -v http://localhost || true 
+
+          # Verificar que la aplicación responde
+          curl -v http://localhost:3001/api/health || true 
