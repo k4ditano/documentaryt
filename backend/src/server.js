@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
 import authRoutes from './routes/auth.js';
 import pagesRoutes from './routes/pages.js';
 import foldersRoutes from './routes/folders.js';
@@ -15,6 +17,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import './workers/reminderWorker.js';
+import jwt from 'jsonwebtoken';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,6 +31,14 @@ if (!fs.existsSync(uploadsDir)) {
 dotenv.config();
 
 const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: ['http://localhost:5173', 'http://localhost:3000', 'http://145.223.100.119', 'http://145.223.100.119:3001'],
+    credentials: true,
+  }
+});
+
 const port = process.env.PORT || 3001;
 
 // Configuración de CORS
@@ -41,49 +52,37 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Parsear JSON y URL-encoded bodies ANTES del logging
+// Parsear JSON y URL-encoded bodies
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
 
-// Middleware para control de caché
-app.use((req, res, next) => {
-  // Solo aplicar caché a peticiones GET
-  if (req.method === 'GET') {
-    res.set('Cache-Control', 'private, max-age=5'); // Cache por 5 segundos
-    res.set('ETag', Math.random().toString(36).substring(7));
+// Socket.io middleware para autenticación
+io.use((socket, next) => {
+  const token = socket.handshake.auth.token;
+  if (!token) {
+    return next(new Error('Authentication error'));
   }
-  next();
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    socket.userId = decoded.id;
+    next();
+  } catch (err) {
+    next(new Error('Authentication error'));
+  }
 });
 
-// Middleware para loggear las peticiones DESPUÉS del parseo
-app.use((req, res, next) => {
-  const timestamp = new Date().toISOString();
-  const requestId = Math.random().toString(36).substring(7);
-  
-  // Solo logear si no es una petición de polling
-  if (!req.headers['x-polling']) {
-    console.log(`[${timestamp}] [${requestId}] Iniciando ${req.method} ${req.path}`);
-    console.log(`[${requestId}] Headers:`, JSON.stringify(req.headers, null, 2));
-    
-    // Solo logear el body si no es una subida de archivo
-    if (!req.path.includes('/upload')) {
-      const sanitizedBody = { ...req.body };
-      if (sanitizedBody.password) {
-        sanitizedBody.password = '[REDACTED]';
-      }
-      console.log(`[${requestId}] Body:`, JSON.stringify(sanitizedBody, null, 2));
-    }
+// Manejo de conexiones de socket
+io.on('connection', (socket) => {
+  console.log(`Usuario ${socket.userId} conectado`);
 
-    // Interceptar la respuesta para logear cuando termina
-    const oldSend = res.send;
-    res.send = function(data) {
-      console.log(`[${timestamp}] [${requestId}] Completando ${req.method} ${req.path} - Status: ${res.statusCode}`);
-      oldSend.apply(res, arguments);
-    };
-  }
+  // Unir al usuario a su sala personal
+  socket.join(`user-${socket.userId}`);
 
-  next();
+  socket.on('disconnect', () => {
+    console.log(`Usuario ${socket.userId} desconectado`);
+  });
 });
 
 // Middleware para verificar el token
@@ -100,8 +99,20 @@ app.use((req, res, next) => {
 // Servir archivos estáticos
 app.use('/uploads', express.static(uploadsDir));
 
-// Rutas API
+// Rutas API con soporte para websockets
 console.log('Registrando rutas...');
+
+// Función para emitir actualizaciones
+const emitUpdate = (userId, event, data) => {
+  io.to(`user-${userId}`).emit(event, data);
+};
+
+// Middleware para inyectar la función emitUpdate en las rutas
+app.use((req, res, next) => {
+  req.emitUpdate = emitUpdate;
+  next();
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/pages', pagesRoutes);
 app.use('/api/folders', foldersRoutes);
@@ -128,25 +139,8 @@ app.use('/api/*', (req, res) => {
   res.status(404).json({ error: 'Ruta no encontrada' });
 });
 
-// Manejo de errores
-app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  res.status(500).json({ error: 'Algo salió mal!' });
-});
-
-// Inicializar la base de datos y luego iniciar el servidor
-async function startServer() {
-  try {
-    await initializeDatabase();
-    console.log('Base de datos inicializada correctamente');
-
-    app.listen(port, () => {
-      console.log(`Servidor corriendo en http://localhost:${port}`);
-    });
-  } catch (error) {
-    console.error('Error al iniciar el servidor:', error);
-    process.exit(1);
-  }
-}
-
-startServer(); 
+// Iniciar el servidor HTTP con socket.io
+httpServer.listen(port, () => {
+  console.log(`Servidor escuchando en el puerto ${port}`);
+  initializeDatabase();
+}); 
