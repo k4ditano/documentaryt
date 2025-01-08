@@ -1,60 +1,30 @@
-import { Page, PageMetadata } from '../types/page';
+import axios from 'axios';
+import type { Page, PageUpdate } from '../types/page';
 
-// Simulación de almacenamiento local
-let pages: Page[] = [
-  {
-    id: '1',
-    title: 'Bienvenido a Notion2',
-    content: '<p>Esta es tu primera página en Notion2.</p>',
-    lastModified: new Date(),
-    createdAt: new Date(),
-    permissions: {
-      read: ['*'],
-      write: ['owner'],
-      admin: ['owner'],
-    },
+const API_URL = '/api/pages';
+
+export const pageService = {
+  getPages: async (): Promise<Page[]> => {
+    const response = await axios.get<Page[]>(API_URL);
+    return response.data;
   },
-];
 
-export const getPages = async (): Promise<PageMetadata[]> => {
-  return pages.map(({ id, title, lastModified, parentId }) => ({
-    id,
-    title,
-    lastModified,
-    parentId,
-  }));
-};
+  getPage: async (id: string): Promise<Page> => {
+    const response = await axios.get<Page>(`${API_URL}/${id}`);
+    return response.data;
+  },
 
-export const getPage = async (id: string): Promise<Page | null> => {
-  return pages.find(page => page.id === id) || null;
-};
+  createPage: async (page: Partial<Page>): Promise<Page> => {
+    const response = await axios.post<Page>(API_URL, page);
+    return response.data;
+  },
 
-export const createPage = async (page: Omit<Page, 'id' | 'createdAt' | 'lastModified'>): Promise<Page> => {
-  const newPage: Page = {
-    ...page,
-    id: Math.random().toString(36).substr(2, 9),
-    createdAt: new Date(),
-    lastModified: new Date(),
-  };
-  pages.push(newPage);
-  return newPage;
-};
+  updatePage: async (id: string, page: PageUpdate): Promise<Page> => {
+    const response = await axios.put<Page>(`${API_URL}/${id}`, page);
+    return response.data;
+  },
 
-export const updatePage = async (id: string, updates: Partial<Page>): Promise<Page | null> => {
-  const index = pages.findIndex(page => page.id === id);
-  if (index === -1) return null;
-
-  pages[index] = {
-    ...pages[index],
-    ...updates,
-    lastModified: new Date(),
-  };
-
-  return pages[index];
-};
-
-export const deletePage = async (id: string): Promise<boolean> => {
-  const initialLength = pages.length;
-  pages = pages.filter(page => page.id !== id);
-  return pages.length !== initialLength;
+  deletePage: async (id: string): Promise<void> => {
+    await axios.delete(`${API_URL}/${id}`);
+  }
 }; 
