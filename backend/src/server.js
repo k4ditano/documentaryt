@@ -31,6 +31,7 @@ if (!fs.existsSync(uploadsDir)) {
 dotenv.config();
 
 const port = process.env.PORT || 3001;
+console.log(`Puerto configurado: ${port}`);
 
 const app = express();
 const httpServer = createServer(app);
