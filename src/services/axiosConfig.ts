@@ -1,8 +1,16 @@
 import axios from 'axios';
 import { getToken, removeToken } from './authService';
 
-// Configurar la URL base
-axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+// Configurar la URL base según el entorno
+const isProduction = window.location.hostname !== 'localhost';
+axios.defaults.baseURL = isProduction 
+  ? 'http://145.223.100.119/api'
+  : 'http://localhost:3001/api';
+
+// Configuración adicional
+axios.defaults.withCredentials = true;
+axios.defaults.headers.common['Accept'] = 'application/json';
+axios.defaults.headers.common['Content-Type'] = 'application/json';
 
 // Interceptor de solicitudes
 axios.interceptors.request.use(

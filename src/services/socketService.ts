@@ -25,7 +25,10 @@ class SocketService {
       return;
     }
 
-    const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    const isProduction = window.location.hostname !== 'localhost';
+    const baseURL = isProduction 
+      ? 'http://145.223.100.119'
+      : 'http://localhost:3001';
 
     try {
       this.socket = io(baseURL + '/api', {
@@ -35,7 +38,8 @@ class SocketService {
         reconnection: true,
         reconnectionAttempts: this.MAX_RECONNECT_ATTEMPTS,
         reconnectionDelay: 1000,
-        timeout: 5000
+        timeout: 5000,
+        withCredentials: true
       });
 
       this.socket.on('connect', () => {
