@@ -116,7 +116,7 @@ router.post('/login', async (req, res) => {
 // Obtener usuario actual
 router.get('/me', authenticateToken, async (req, res) => {
   try {
-    const user = await db.getAsync('SELECT id, username, email FROM users WHERE id = ?', [req.user.id]);
+    const user = await db.getAsync('SELECT id, username, email FROM users WHERE id = ?', [req.userId]);
     if (!user) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }

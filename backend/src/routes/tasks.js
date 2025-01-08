@@ -13,11 +13,11 @@ router.get('/test', (req, res) => {
 
 // Obtener todas las tareas del usuario
 router.get('/', authenticateToken, async (req, res) => {
-    console.log('GET /api/tasks - Obteniendo tareas para el usuario:', req.user?.id);
+    console.log('GET /api/tasks - Obteniendo tareas para el usuario:', req.userId);
     try {
         const tasks = await db.allAsync(
             `SELECT * FROM tasks WHERE user_id = ? ORDER BY due_date ASC`,
-            [req.user.id]
+            [req.userId]
         );
         console.log('Tareas encontradas:', tasks?.length || 0);
         
@@ -42,7 +42,7 @@ router.post('/', authenticateToken, async (req, res) => {
         const result = await db.runAsync(
             `INSERT INTO tasks (title, description, due_date, priority, user_id, page_id)
              VALUES (?, ?, ?, ?, ?, ?)`,
-            [title, description, due_date, priority, req.user.id, page_id]
+            [title, description, due_date, priority, req.userId, page_id]
         );
         
         if (due_date) {
