@@ -59,6 +59,8 @@ jobs:
           if [ -d "dist" ]; then
             echo "Contenido del directorio dist:"
             ls -la dist/
+            echo "Contenido de index.html:"
+            cat dist/index.html
           else
             echo "Error: El directorio dist no existe"
             exit 1
@@ -79,6 +81,13 @@ jobs:
           echo "NODE_ENV=production" >> .env
           echo "DB_PATH=/var/www/notion2_data/database.sqlite" >> .env
 
+          # Verificar estado de Apache
+          echo "Verificando estado de Apache..."
+          sudo systemctl status apache2 || true
+          
+          # Asegurar que Apache está detenido
+          sudo systemctl stop apache2
+
           # Configurar Apache
           echo "Configurando Apache..."
           sudo tee /etc/apache2/sites-available/notion2.conf > /dev/null << 'EOL'
@@ -98,7 +107,7 @@ jobs:
                   Options Indexes FollowSymLinks MultiViews
                   AllowOverride All
                   Require all granted
-                  FallbackResource /index.html
+                  DirectoryIndex index.html
               </Directory>
 
               ErrorLog \${APACHE_LOG_DIR}/notion2-error.log
@@ -114,7 +123,15 @@ jobs:
           # Deshabilitar el sitio por defecto y habilitar el nuevo
           sudo a2dissite 000-default.conf
           sudo a2ensite notion2.conf
+
+          # Verificar configuración de Apache
+          echo "Verificando configuración de Apache..."
+          sudo apache2ctl configtest
+
+          # Reiniciar Apache
+          echo "Reiniciando Apache..."
           sudo systemctl restart apache2
+          sudo systemctl status apache2
 
           # Asegurar permisos
           cd ..
@@ -147,4 +164,10 @@ jobs:
           
           # Mostrar logs iniciales
           echo "Logs de la aplicación:"
-          pm2 logs notion2 --lines 20 || true 
+          pm2 logs notion2 --lines 20 || true
+
+          # Verificar que los servicios están corriendo
+          echo "Verificando servicios..."
+          sudo systemctl status apache2
+          curl -v http://localhost:3001/api/health || true
+          curl -v http://localhost || true 
