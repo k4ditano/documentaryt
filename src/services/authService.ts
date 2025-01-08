@@ -1,5 +1,6 @@
 import type { User } from '../types/index';
 import axios from 'axios';
+import { jwtDecode } from 'jwt-decode';
 
 const API_URL = '/auth';
 
@@ -121,4 +122,16 @@ class AuthService {
   }
 }
 
-export const authService = new AuthService(); 
+export const authService = new AuthService();
+
+export const getToken = (): string | null => {
+  return localStorage.getItem('token');
+};
+
+export const setToken = (token: string): void => {
+  localStorage.setItem('token', token);
+};
+
+export const removeToken = (): void => {
+  localStorage.removeItem('token');
+}; 
