@@ -3,7 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { db } from '../db.js';
-import { authenticateToken } from '../middleware/auth.js';
+import authenticateToken from '../middleware/auth.js';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
