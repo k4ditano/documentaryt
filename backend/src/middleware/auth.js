@@ -8,7 +8,7 @@ const authenticateToken = (req, res, next) => {
   // Intentar obtener el token del header o de las cookies
   const authHeader = req.headers['authorization'];
   const tokenFromHeader = authHeader && authHeader.split(' ')[1];
-  const tokenFromCookie = req.cookies.token;
+  const tokenFromCookie = req.cookies?.token;
   const token = tokenFromHeader || tokenFromCookie;
   
   console.log('Token encontrado:', token ? '***' : 'No token');
@@ -22,6 +22,12 @@ const authenticateToken = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log('Token verificado exitosamente:', decoded);
+    
+    if (!decoded || !decoded.id) {
+      console.log('Token no contiene ID de usuario');
+      return res.status(401).json({ error: 'Token inválido' });
+    }
+    
     req.userId = decoded.id;
     req.user = { id: decoded.id };
     

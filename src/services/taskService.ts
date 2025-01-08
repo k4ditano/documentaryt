@@ -16,7 +16,7 @@ export interface Task {
     linked_pages?: string[];
 }
 
-const API_URL = '/tasks';
+const API_URL = '/api/tasks';
 
 // Configurar axios para incluir credenciales
 axios.defaults.withCredentials = true;
@@ -24,18 +24,15 @@ axios.defaults.withCredentials = true;
 export const taskService = {
     // Obtener todas las tareas
     getAllTasks: async (): Promise<Task[]> => {
-        console.log('Solicitando todas las tareas...');
-        const response = await axios.get<Task[]>(API_URL, {
-            withCredentials: true
-        });
-        console.log('Respuesta getAllTasks (con páginas enlazadas):', 
-            response.data.map(task => ({
-                id: task.id,
-                title: task.title,
-                linked_pages: task.linked_pages
-            }))
-        );
-        return response.data;
+        try {
+            console.log('Solicitando todas las tareas...');
+            const response = await axios.get<Task[]>(API_URL);
+            console.log('Respuesta getAllTasks:', response.data);
+            return response.data || [];
+        } catch (error) {
+            console.error('Error al obtener las tareas:', error);
+            throw error;
+        }
     },
 
     // Crear una nueva tarea

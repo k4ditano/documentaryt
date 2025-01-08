@@ -23,28 +23,36 @@ const TaskList: React.FC = () => {
 
     const loadTasks = async () => {
         try {
+            console.log('Cargando tareas...');
             const fetchedTasks = await taskService.getAllTasks();
-            setTasks(fetchedTasks);
+            console.log('Tareas cargadas:', fetchedTasks);
+            setTasks(Array.isArray(fetchedTasks) ? fetchedTasks : []);
         } catch (error) {
-            console.error('Error loading tasks:', error);
+            console.error('Error al cargar las tareas:', error);
+            setTasks([]);
         }
     };
 
     const handleTaskMove = async (taskId: number, newStatus: TaskStatus) => {
-        const taskToUpdate = tasks.find(t => t.id === taskId);
-        if (taskToUpdate) {
-            try {
-                const updatedTask = await taskService.updateTask(taskId, {
-                    ...taskToUpdate,
-                    status: newStatus
-                });
-
-                setTasks(tasks.map(task => 
-                    task.id === updatedTask.id ? updatedTask : task
-                ));
-            } catch (error) {
-                console.error('Error updating task status:', error);
+        try {
+            const taskToUpdate = tasks.find(t => t.id === taskId);
+            if (!taskToUpdate) {
+                console.error('Tarea no encontrada:', taskId);
+                return;
             }
+
+            const updatedTask = await taskService.updateTask(taskId, {
+                ...taskToUpdate,
+                status: newStatus
+            });
+
+            setTasks(prevTasks => 
+                prevTasks.map(task => 
+                    task.id === updatedTask.id ? updatedTask : task
+                )
+            );
+        } catch (error) {
+            console.error('Error al actualizar el estado de la tarea:', error);
         }
     };
 
