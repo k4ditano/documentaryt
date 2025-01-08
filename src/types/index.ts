@@ -53,8 +53,20 @@ export interface File {
   url: string;
   type: 'image' | 'document';
   size: number;
-  uploadDate: string;
-  pageId?: string;
+  upload_date: string;
+  page_id?: string;
+  user_id: number;
+}
+
+export interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'warning' | 'error' | 'success';
+  read: boolean;
+  user_id: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Reminder {
@@ -63,7 +75,7 @@ export interface Reminder {
   description: string;
   due_date: string;
   completed: boolean;
-  user_id: string;
+  user_id: number;
   created_at: string;
   updated_at: string;
 }
