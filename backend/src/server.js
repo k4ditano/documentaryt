@@ -30,11 +30,12 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3001;
 
-// Middleware de logging
+// Middleware para loggear las peticiones
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-  console.log('Headers:', req.headers);
-  console.log('Body:', req.body);
+  const timestamp = new Date().toISOString();
+  console.log(`${timestamp} - ${req.method} ${req.path}`);
+  console.log('Headers:', JSON.stringify(req.headers, null, 2));
+  console.log('Body:', JSON.stringify(req.body, null, 2));
   next();
 });
 
@@ -48,8 +49,22 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+
+// Parsear JSON y URL-encoded bodies
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// Middleware para verificar el token
+app.use((req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (token) {
+    console.log('Token encontrado:', token);
+  } else {
+    console.log('No se encontró token en la petición');
+  }
+  next();
+});
 
 // Servir archivos estáticos
 app.use('/uploads', express.static(uploadsDir));
