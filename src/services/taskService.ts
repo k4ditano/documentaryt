@@ -16,7 +16,7 @@ export interface Task {
     linked_pages?: string[];
 }
 
-const API_URL = 'http://localhost:3001/api/tasks';
+const API_URL = 'http://145.223.100.119:3001/api/tasks';
 
 // Configurar axios para incluir credenciales
 axios.defaults.withCredentials = true;
