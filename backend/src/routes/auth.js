@@ -1,6 +1,6 @@
 import express from 'express';
-import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 import { db } from '../db.js';
 import { authenticateToken } from '../middleware/auth.js';
 
@@ -60,48 +60,52 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// Login de usuario
+// Login
 router.post('/login', async (req, res) => {
   try {
+    console.log('Intento de login:', req.body);
     const { email, password } = req.body;
 
-    // Verificar si el usuario existe
+    if (!email || !password) {
+      console.log('Faltan credenciales');
+      return res.status(400).json({ error: 'Por favor proporcione email y contraseña' });
+    }
+
+    // Buscar usuario
     const user = await db.getAsync('SELECT * FROM users WHERE email = ?', [email]);
+    console.log('Usuario encontrado:', user ? { ...user, password: '[REDACTED]' } : null);
+
     if (!user) {
+      console.log('Usuario no encontrado');
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
     // Verificar contraseña
     const isMatch = await bcrypt.compare(password, user.password);
+    console.log('Resultado de verificación de contraseña:', isMatch);
+
     if (!isMatch) {
+      console.log('Contraseña incorrecta');
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
-    // Crear token
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRE || '24h'
-    });
+    // Generar token
+    const token = jwt.sign(
+      { id: user.id },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRE || '24h' }
+    );
 
-    // Configurar opciones de cookie
-    const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 24 * 60 * 60 * 1000 // 24 horas
-    };
-
-    // Enviar token en cookie y en la respuesta
-    res.cookie('token', token, cookieOptions);
+    console.log('Token generado exitosamente');
 
     // Enviar respuesta
     res.json({
-      success: true,
-      token,
       user: {
         id: user.id,
-        username: user.username,
-        email: user.email
-      }
+        email: user.email,
+        username: user.username
+      },
+      token
     });
   } catch (error) {
     console.error('Error en login:', error);
