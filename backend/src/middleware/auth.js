@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 
-export const authenticateToken = (req, res, next) => {
+const authenticateToken = (req, res, next) => {
   console.log('Verificando autenticación...');
   console.log('Headers:', JSON.stringify(req.headers, null, 2));
 
@@ -28,4 +28,6 @@ export const authenticateToken = (req, res, next) => {
     console.error('Error al verificar token:', error);
     return res.status(401).json({ error: 'Token inválido o expirado' });
   }
-}; 
+};
+
+export default authenticateToken; 

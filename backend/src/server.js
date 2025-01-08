@@ -30,19 +30,6 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3001;
 
-// Middleware para loggear las peticiones
-app.use((req, res, next) => {
-  const timestamp = new Date().toISOString();
-  console.log(`${timestamp} - ${req.method} ${req.path}`);
-  console.log('Headers:', JSON.stringify(req.headers, null, 2));
-  
-  // Solo logear el body si no es una subida de archivo
-  if (!req.path.includes('/upload')) {
-    console.log('Body:', JSON.stringify(req.body, null, 2));
-  }
-  next();
-});
-
 // Configuración de CORS
 const corsOptions = {
   origin: ['http://localhost:5173', 'http://localhost:3000', 'http://145.223.100.119', 'http://145.223.100.119:3001'],
@@ -54,10 +41,27 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Parsear JSON y URL-encoded bodies
+// Parsear JSON y URL-encoded bodies ANTES del logging
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
+
+// Middleware para loggear las peticiones DESPUÉS del parseo
+app.use((req, res, next) => {
+  const timestamp = new Date().toISOString();
+  console.log(`${timestamp} - ${req.method} ${req.path}`);
+  console.log('Headers:', JSON.stringify(req.headers, null, 2));
+  
+  // Solo logear el body si no es una subida de archivo
+  if (!req.path.includes('/upload')) {
+    const sanitizedBody = { ...req.body };
+    if (sanitizedBody.password) {
+      sanitizedBody.password = '[REDACTED]';
+    }
+    console.log('Body:', JSON.stringify(sanitizedBody, null, 2));
+  }
+  next();
+});
 
 // Middleware para verificar el token
 app.use((req, res, next) => {
