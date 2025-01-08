@@ -1,6 +1,6 @@
-import { Editor, Element as SlateElement, Transforms, Text, Node } from 'slate';
+import { Editor, Element as SlateElement, Transforms, Text } from 'slate';
+import { ReactEditor } from 'slate-react';
 import { CustomEditor, CustomElement } from '../types/slate';
-import isHotkey from 'is-hotkey';
 
 type HotkeyFormat = 'bold' | 'italic' | 'underline' | 'code';
 
@@ -71,7 +71,8 @@ export const isBlockActive = (editor: CustomEditor, format: string) => {
 };
 
 export const withImages = (editor: CustomEditor) => {
-  const { insertData, isVoid } = editor;
+  const { isVoid } = editor;
+  const originalInsertData = (editor as any).insertData;
 
   editor.isVoid = (element: any) => {
     return element.type === 'image' ? true : isVoid(element);
@@ -97,8 +98,8 @@ export const withImages = (editor: CustomEditor) => {
       }
     } else if (isImageUrl(text)) {
       insertImage(editor, text);
-    } else {
-      insertData(data);
+    } else if (originalInsertData) {
+      originalInsertData(data);
     }
   };
 
