@@ -1,10 +1,10 @@
 import axios from 'axios';
-import { getToken, removeToken } from './authService';
+import { getToken, setToken, removeToken } from './authService';
 
 // Configurar la URL base según el entorno
 const isProduction = window.location.hostname !== 'localhost';
 axios.defaults.baseURL = isProduction 
-  ? 'http://145.223.100.119/api'
+  ? `${window.location.origin}/api`
   : 'http://localhost:3001/api';
 
 // Configuración adicional
@@ -32,11 +32,11 @@ axios.interceptors.request.use(
 // Interceptor de respuestas
 axios.interceptors.response.use(
   (response) => {
-    console.log('Response:', {
-      url: response.config.url,
-      status: response.status,
-      data: response.data
-    });
+    // Si la respuesta incluye un token en el header, actualizarlo
+    const newToken = response.headers['x-auth-token'];
+    if (newToken) {
+      setToken(newToken);
+    }
     return response;
   },
   async (error) => {
@@ -49,6 +49,7 @@ axios.interceptors.response.use(
       // Si el error es en /auth/me, simplemente eliminamos el token
       if (originalRequest.url === '/auth/me') {
         removeToken();
+        window.location.href = '/login';
         return Promise.reject(error);
       }
 
@@ -59,12 +60,14 @@ axios.interceptors.response.use(
           // Si obtenemos el usuario, reintentamos la petición original
           return axios(originalRequest);
         } else {
-          // Si no hay usuario, eliminamos el token
+          // Si no hay usuario, eliminamos el token y redirigimos
           removeToken();
+          window.location.href = '/login';
         }
       } catch (refreshError) {
-        // Si falla la verificación, eliminamos el token
+        // Si falla la verificación, eliminamos el token y redirigimos
         removeToken();
+        window.location.href = '/login';
       }
     }
 

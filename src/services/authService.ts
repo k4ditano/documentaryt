@@ -73,26 +73,25 @@ class AuthService {
 
   async getCurrentUser(): Promise<User | null> {
     try {
-      const user = this.getStoredUser();
       const token = this.getToken();
-
+      
       if (!token) {
         console.log('No hay token almacenado');
         return null;
       }
 
-      if (user && this.isTokenValid(token)) {
-        return user;
+      // Intentar obtener el usuario actual del servidor
+      const response = await axios.get<User>(`${API_URL}/me`);
+      if (response.data) {
+        this.setUser(response.data);
+        return response.data;
       }
-
-      const response = await axios.get<{user: User}>(`${API_URL}/me`);
-      this.setUser(response.data.user);
-      return response.data.user;
+      
+      return null;
     } catch (error) {
       const axiosError = error as AxiosErrorResponse;
       if (axiosError.response?.status === 401) {
         this.clearSession();
-        return null;
       }
       console.error('Error al obtener el usuario actual:', error);
       return null;
@@ -115,11 +114,6 @@ class AuthService {
 
   private setUser(user: User): void {
     localStorage.setItem('user', JSON.stringify(user));
-  }
-
-  private getStoredUser(): User | null {
-    const userStr = localStorage.getItem('user');
-    return userStr ? JSON.parse(userStr) : null;
   }
 
   private clearSession(): void {
