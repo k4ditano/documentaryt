@@ -16,7 +16,7 @@ export interface Task {
     linked_pages?: string[];
 }
 
-const API_URL = '/api/tasks';
+const API_URL = '/tasks';
 
 // Configurar axios para incluir credenciales
 axios.defaults.withCredentials = true;

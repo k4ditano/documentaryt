@@ -1,7 +1,7 @@
 import type { User } from '../types/index';
 import axios from 'axios';
 
-const API_URL = '/api/auth';
+const API_URL = '/auth';
 
 interface LoginResponse {
   user: User;

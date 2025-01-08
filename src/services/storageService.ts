@@ -1,7 +1,7 @@
 import type { Page, Folder } from '../types/index';
 import axios from 'axios';
 
-const API_URL = '/api';
+const API_URL = '';
 
 interface File {
   id: string;
