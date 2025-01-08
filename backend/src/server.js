@@ -46,20 +46,43 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
 
+// Middleware para control de caché
+app.use((req, res, next) => {
+  // Solo aplicar caché a peticiones GET
+  if (req.method === 'GET') {
+    res.set('Cache-Control', 'private, max-age=5'); // Cache por 5 segundos
+    res.set('ETag', Math.random().toString(36).substring(7));
+  }
+  next();
+});
+
 // Middleware para loggear las peticiones DESPUÉS del parseo
 app.use((req, res, next) => {
   const timestamp = new Date().toISOString();
-  console.log(`${timestamp} - ${req.method} ${req.path}`);
-  console.log('Headers:', JSON.stringify(req.headers, null, 2));
+  const requestId = Math.random().toString(36).substring(7);
   
-  // Solo logear el body si no es una subida de archivo
-  if (!req.path.includes('/upload')) {
-    const sanitizedBody = { ...req.body };
-    if (sanitizedBody.password) {
-      sanitizedBody.password = '[REDACTED]';
+  // Solo logear si no es una petición de polling
+  if (!req.headers['x-polling']) {
+    console.log(`[${timestamp}] [${requestId}] Iniciando ${req.method} ${req.path}`);
+    console.log(`[${requestId}] Headers:`, JSON.stringify(req.headers, null, 2));
+    
+    // Solo logear el body si no es una subida de archivo
+    if (!req.path.includes('/upload')) {
+      const sanitizedBody = { ...req.body };
+      if (sanitizedBody.password) {
+        sanitizedBody.password = '[REDACTED]';
+      }
+      console.log(`[${requestId}] Body:`, JSON.stringify(sanitizedBody, null, 2));
     }
-    console.log('Body:', JSON.stringify(sanitizedBody, null, 2));
+
+    // Interceptar la respuesta para logear cuando termina
+    const oldSend = res.send;
+    res.send = function(data) {
+      console.log(`[${timestamp}] [${requestId}] Completando ${req.method} ${req.path} - Status: ${res.statusCode}`);
+      oldSend.apply(res, arguments);
+    };
   }
+
   next();
 });
 
