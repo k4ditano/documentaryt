@@ -36,36 +36,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setError(null);
 
       const [pagesRes, foldersRes, tasksRes] = await Promise.all([
-        axios.get<{ data: Page[] | { error: string } }>('/api/pages'),
-        axios.get<{ data: Folder[] | { error: string } }>('/api/folders'),
-        axios.get<{ data: Task[] | { error: string } }>('/api/tasks')
+        axios.get<Page[]>('/api/pages'),
+        axios.get<Folder[]>('/api/folders'),
+        axios.get<Task[]>('/api/tasks')
       ]);
 
       // Validar y procesar las respuestas
-      if ('error' in pagesRes.data) {
-        console.error('Error en páginas:', pagesRes.data.error);
-        setPages([]);
-      } else {
-        setPages(Array.isArray(pagesRes.data) ? pagesRes.data : []);
-      }
+      setPages(Array.isArray(pagesRes.data) ? pagesRes.data : []);
+      setFolders(Array.isArray(foldersRes.data) ? foldersRes.data : []);
+      setTasks(Array.isArray(tasksRes.data) ? tasksRes.data : []);
 
-      if ('error' in foldersRes.data) {
-        console.error('Error en carpetas:', foldersRes.data.error);
-        setFolders([]);
-      } else {
-        setFolders(Array.isArray(foldersRes.data) ? foldersRes.data : []);
-      }
-
-      if ('error' in tasksRes.data) {
-        console.error('Error en tareas:', tasksRes.data.error);
-        setTasks([]);
-      } else {
-        setTasks(Array.isArray(tasksRes.data) ? tasksRes.data : []);
-      }
-
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error al cargar los datos:', err);
-      setError('Error al cargar los datos');
+      if (err.response?.status === 401) {
+        setError('Sesión expirada. Por favor, inicie sesión nuevamente.');
+      } else {
+        setError('Error al cargar los datos. Por favor, intente nuevamente.');
+      }
       // Establecer arrays vacíos en caso de error
       setPages([]);
       setFolders([]);

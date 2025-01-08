@@ -32,9 +32,8 @@ class AuthService {
 
       console.log('Respuesta de login:', response.data);
       if (response.data.token) {
-        localStorage.setItem('token', response.data.token);
-        // Configurar el token en axios después de login
-        axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+        this.setToken(response.data.token);
+        this.setUser(response.data.user);
       }
       return response.data;
     } catch (error) {
@@ -52,9 +51,8 @@ class AuthService {
       });
 
       if (response.data.token) {
-        localStorage.setItem('token', response.data.token);
-        // Configurar el token en axios después de registro
-        axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+        this.setToken(response.data.token);
+        this.setUser(response.data.user);
       }
       return response.data;
     } catch (error) {
@@ -66,32 +64,34 @@ class AuthService {
   async logout(): Promise<void> {
     try {
       await axios.post(`${API_URL}/logout`);
-      localStorage.removeItem('token');
-      // Limpiar el token de axios después de logout
-      delete axios.defaults.headers.common['Authorization'];
     } catch (error) {
       console.error('Error en logout:', error);
-      localStorage.removeItem('token');
-      delete axios.defaults.headers.common['Authorization'];
-      throw error;
+    } finally {
+      this.clearSession();
     }
   }
 
   async getCurrentUser(): Promise<User | null> {
     try {
-      const token = localStorage.getItem('token');
+      const user = this.getStoredUser();
+      const token = this.getToken();
+
       if (!token) {
         console.log('No hay token almacenado');
         return null;
       }
 
+      if (user && this.isTokenValid(token)) {
+        return user;
+      }
+
       const response = await axios.get<{user: User}>(`${API_URL}/me`);
+      this.setUser(response.data.user);
       return response.data.user;
     } catch (error) {
       const axiosError = error as AxiosErrorResponse;
       if (axiosError.response?.status === 401) {
-        localStorage.removeItem('token');
-        delete axios.defaults.headers.common['Authorization'];
+        this.clearSession();
         return null;
       }
       console.error('Error al obtener el usuario actual:', error);
@@ -99,39 +99,55 @@ class AuthService {
     }
   }
 
-  async updateProfile(data: Partial<User>): Promise<User> {
-    const response = await axios.put<User>(`${API_URL}/profile`, data);
-    return response.data;
+  getToken(): string | null {
+    return localStorage.getItem('token');
   }
 
-  async updatePassword(currentPassword: string, newPassword: string): Promise<void> {
-    await axios.put(`${API_URL}/password`, { currentPassword, newPassword });
+  setToken(token: string): void {
+    localStorage.setItem('token', token);
+    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
   }
 
-  async uploadAvatar(file: File): Promise<User> {
-    const formData = new FormData();
-    formData.append('avatar', file);
+  removeToken(): void {
+    localStorage.removeItem('token');
+    delete axios.defaults.headers.common['Authorization'];
+  }
 
-    const response = await axios.post<User>(`${API_URL}/avatar`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    });
+  private setUser(user: User): void {
+    localStorage.setItem('user', JSON.stringify(user));
+  }
 
-    return response.data;
+  private getStoredUser(): User | null {
+    const userStr = localStorage.getItem('user');
+    return userStr ? JSON.parse(userStr) : null;
+  }
+
+  private clearSession(): void {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    delete axios.defaults.headers.common['Authorization'];
+  }
+
+  private isTokenValid(token: string): boolean {
+    try {
+      const decoded = jwtDecode<{ exp: number }>(token);
+      return decoded.exp * 1000 > Date.now();
+    } catch {
+      return false;
+    }
   }
 }
 
 export const authService = new AuthService();
 
 export const getToken = (): string | null => {
-  return localStorage.getItem('token');
+  return authService.getToken();
 };
 
 export const setToken = (token: string): void => {
-  localStorage.setItem('token', token);
+  authService.setToken(token);
 };
 
 export const removeToken = (): void => {
-  localStorage.removeItem('token');
+  authService.removeToken();
 }; 
