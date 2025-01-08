@@ -16,22 +16,35 @@ export interface Task {
     linked_pages?: string[];
 }
 
-const API_URL = '/api/tasks';
+const BASE_URL = import.meta.env.VITE_API_URL || '';
+const API_URL = `${BASE_URL}/tasks`;
 
 // Configurar axios para incluir credenciales
 axios.defaults.withCredentials = true;
+
+// Interceptor para manejar errores
+axios.interceptors.response.use(
+    response => response,
+    error => {
+        console.error('Error en la petición:', error);
+        if (error.response) {
+            console.error('Respuesta del servidor:', error.response.data);
+        }
+        throw error;
+    }
+);
 
 export const taskService = {
     // Obtener todas las tareas
     getAllTasks: async (): Promise<Task[]> => {
         try {
-            console.log('Solicitando todas las tareas...');
+            console.log('Solicitando todas las tareas a:', API_URL);
             const response = await axios.get<Task[]>(API_URL);
             console.log('Respuesta getAllTasks:', response.data);
             return response.data || [];
         } catch (error) {
             console.error('Error al obtener las tareas:', error);
-            throw error;
+            throw new Error('Error al cargar los datos: ' + (error as Error).message);
         }
     },
 
