@@ -112,17 +112,17 @@ const StyledRouterLink = styled(RouterLink)({
 
 const Login: FC = () => {
   const navigate = useNavigate();
-  const { login, isAuthenticated, error: authError, loading } = useAuth();
+  const { login, isAuthenticated, error: authError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (isAuthenticated && !loading) {
+    if (isAuthenticated) {
       navigate('/', { replace: true });
     }
-  }, [isAuthenticated, loading, navigate]);
+  }, [isAuthenticated, navigate]);
 
   useEffect(() => {
     if (authError) {
@@ -140,9 +140,9 @@ const Login: FC = () => {
 
     try {
       await login(email, password);
-      // La redirección se maneja en el primer useEffect
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al iniciar sesión');
+    } finally {
       setIsLoading(false);
     }
   };

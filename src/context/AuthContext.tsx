@@ -23,57 +23,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     const initAuth = async () => {
+      const token = authService.getToken();
+      
+      // Si no hay token, simplemente terminamos la inicialización
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
       try {
-        const token = authService.getToken();
-        if (!token) {
-          setIsAuthenticated(false);
-          setUser(null);
-          setIsInitialized(true);
-          setLoading(false);
-          return;
-        }
-
-        if (!authService.isTokenValid(token)) {
-          authService.clearSession();
-          setIsAuthenticated(false);
-          setUser(null);
-          setIsInitialized(true);
-          setLoading(false);
-          return;
-        }
-
         const userData = await authService.getCurrentUser();
         if (userData) {
           setUser(userData);
           setIsAuthenticated(true);
         } else {
           authService.clearSession();
-          setIsAuthenticated(false);
-          setUser(null);
         }
       } catch (error) {
         console.error('Error al inicializar autenticación:', error);
         authService.clearSession();
-        setIsAuthenticated(false);
-        setUser(null);
       } finally {
         setLoading(false);
-        setIsInitialized(true);
       }
     };
 
-    if (!isInitialized) {
-      initAuth();
-    }
-  }, [isInitialized]);
+    initAuth();
+  }, []); // Solo se ejecuta una vez al montar el componente
 
   const login = async (email: string, password: string) => {
     try {
-      setLoading(true);
       const response = await authService.login(email, password);
       setUser(response.user);
       setIsAuthenticated(true);
@@ -83,14 +64,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setError('Credenciales inválidas');
       setIsAuthenticated(false);
       throw error;
-    } finally {
-      setLoading(false);
     }
   };
 
   const register = async (username: string, email: string, password: string) => {
     try {
-      setLoading(true);
       const response = await authService.register(username, email, password);
       setUser(response.user);
       setIsAuthenticated(true);
@@ -100,14 +78,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setError('Error al registrar usuario');
       setIsAuthenticated(false);
       throw error;
-    } finally {
-      setLoading(false);
     }
   };
 
   const logout = async () => {
     try {
-      setLoading(true);
       await authService.logout();
       setUser(null);
       setIsAuthenticated(false);
@@ -117,14 +92,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Error al cerrar sesión:', error);
       setError('Error al cerrar sesión');
       throw error;
-    } finally {
-      setLoading(false);
     }
   };
 
   const updateProfile = async (data: Partial<User>) => {
     try {
-      if (!user) throw new Error('No hay usuario autenticado');
       const updatedUser = await authService.getCurrentUser(); // Temporal hasta implementar updateProfile
       if (updatedUser) {
         setUser(updatedUser);
@@ -139,7 +111,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updatePassword = async (currentPassword: string, newPassword: string) => {
     try {
-      if (!user) throw new Error('No hay usuario autenticado');
       // Temporal hasta implementar updatePassword
       setError(null);
     } catch (error) {
@@ -151,7 +122,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const uploadAvatar = async (file: File) => {
     try {
-      if (!user) throw new Error('No hay usuario autenticado');
       // Temporal hasta implementar uploadAvatar
       setError(null);
     } catch (error) {
@@ -177,8 +147,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     clearError
   };
 
-  if (!isInitialized) {
-    return <div>Cargando...</div>;
+  // Solo mostramos el loader en la inicialización inicial
+  if (loading) {
+    return null; // En lugar de mostrar "Cargando..."
   }
 
   return (
