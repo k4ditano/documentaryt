@@ -71,13 +71,13 @@ app.use((req, res, next) => {
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       
-      // Solo renovar el token si está próximo a expirar
+      // Solo renovar el token si está próximo a expirar (menos de 1 hora)
       const tokenExp = decoded.exp * 1000; // Convertir a milisegundos
       const now = Date.now();
       const timeToExpire = tokenExp - now;
       
-      // Si el token expira en menos de 12 horas, renovarlo
-      if (timeToExpire < 12 * 60 * 60 * 1000) {
+      // Si el token expira en menos de 1 hora, renovarlo
+      if (timeToExpire < 60 * 60 * 1000) {
         const newToken = jwt.sign({ id: decoded.id }, process.env.JWT_SECRET, {
           expiresIn: process.env.JWT_EXPIRE || '24h'
         });
