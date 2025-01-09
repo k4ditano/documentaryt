@@ -19,12 +19,16 @@ class SocketService {
             return;
         }
 
-        const wsUrl = import.meta.env.VITE_WS_URL || 'http://localhost:3001';
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+        const baseUrl = apiUrl.replace('/api', '');
+        const wsUrl = baseUrl;
 
         if (this.socket?.connected) {
             console.log('Ya existe una conexión websocket activa');
             return;
         }
+
+        console.log('Conectando websocket a:', wsUrl);
 
         this.socket = io(wsUrl, {
             auth: { token },
@@ -32,7 +36,8 @@ class SocketService {
             reconnection: true,
             reconnectionDelay: 1000,
             reconnectionDelayMax: 5000,
-            reconnectionAttempts: 5
+            reconnectionAttempts: 5,
+            path: '/socket.io'
         });
 
         this.setupEventListeners();
