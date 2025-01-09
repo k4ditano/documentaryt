@@ -1,78 +1,225 @@
-/* Estilos para el editor BlockNote */
-
-/* Contenedor principal del editor */
+/* Estilos globales para el editor BlockNote */
 .bn-container {
-  font-size: 16px;
-  width: 100%;
-  color: rgb(55, 53, 47);
+  height: 100%;
+  outline: none !important;
+  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
 }
 
-/* Ajustar la posición del botón + */
+/* Estilos del menú desplegable */
+.bn-menu {
+  background: white;
+  border-radius: 4px;
+  box-shadow: rgb(15 15 15 / 5%) 0px 0px 0px 1px, rgb(15 15 15 / 10%) 0px 3px 6px, rgb(15 15 15 / 20%) 0px 9px 24px;
+  overflow: hidden;
+}
+
+.bn-menu-item {
+  padding: 6px 12px;
+  margin: 0;
+  cursor: pointer;
+  color: rgb(55, 53, 47);
+  font-size: 14px;
+  line-height: 1.5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bn-menu-item:hover {
+  background: rgba(55, 53, 47, 0.08);
+}
+
+/* Estilos de los botones */
+.bn-button {
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: rgba(55, 53, 47, 0.65);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  width: 24px;
+  transition: background-color 20ms ease-in 0s;
+}
+
+.bn-button:hover {
+  background: rgba(55, 53, 47, 0.08);
+}
+
+.bn-button.active {
+  color: rgb(46, 170, 220);
+  background: rgba(46, 170, 220, 0.1);
+}
+
+/* Estilos del botón de agregar bloque */
 .bn-add-block {
-  left: -24px;
+  opacity: 0;
+  transition: opacity 100ms ease-in;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  background: white;
+  border: 1px solid rgba(55, 53, 47, 0.16);
+  border-radius: 50%;
+  color: rgb(55, 53, 47);
+  cursor: pointer;
 }
 
-/* Estilos para el contenido editable */
+.bn-block-content-container {
+  position: relative;
+}
+
+.bn-block-content-container:hover .bn-add-block {
+  opacity: 1;
+}
+
+.bn-add-block:hover {
+  background: rgba(55, 53, 47, 0.08);
+}
+
+/* Estilos del toolbar */
+.bn-toolbar {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  background: white;
+  border-radius: 4px;
+  box-shadow: rgb(15 15 15 / 5%) 0px 0px 0px 1px, rgb(15 15 15 / 10%) 0px 3px 6px, rgb(15 15 15 / 20%) 0px 9px 24px;
+  padding: 4px;
+  gap: 2px;
+}
+
+/* Estilos para el contenedor de bloques */
+.bn-block-container {
+  position: relative;
+  padding: 3px 0;
+}
+
+.bn-block-container:hover {
+  background: rgba(55, 53, 47, 0.03);
+}
+
+.bn-block-container:hover .bn-add-block {
+  opacity: 1;
+}
+
+/* Estilos del contenido editable */
 .bn-container [contenteditable="true"] {
+  outline: none !important;
+  padding: 0;
+  color: rgb(55, 53, 47);
+}
+
+.bn-container [contenteditable="true"] p {
+  margin: 0;
+  min-height: 1.5em;
+  padding: 3px 2px;
+  line-height: 1.5;
   font-size: 16px;
-  line-height: 1.6;
-  color: rgb(55, 53, 47);
 }
 
-/* Estilos para los encabezados */
-.bn-container h1 {
-  font-size: 2em;
-  color: rgb(55, 53, 47);
+.bn-container [contenteditable="true"] h1 {
+  font-size: 1.875em;
+  margin-top: 1.4em;
+  margin-bottom: 0.3em;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
-.bn-container h2 {
+.bn-container [contenteditable="true"] h2 {
   font-size: 1.5em;
-  color: rgb(55, 53, 47);
+  margin-top: 1.3em;
+  margin-bottom: 0.3em;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
-.bn-container h3 {
-  font-size: 1.17em;
-  color: rgb(55, 53, 47);
+.bn-container [contenteditable="true"] h3 {
+  font-size: 1.25em;
+  margin-top: 1.2em;
+  margin-bottom: 0.3em;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
-/* Estilos para el texto */
-.bn-container p {
-  color: rgb(55, 53, 47);
+.bn-container [contenteditable="true"] ul,
+.bn-container [contenteditable="true"] ol {
+  margin: 0.2em 0;
+  padding-left: 1.5em;
 }
 
-/* Ajustes para dispositivos móviles */
-@media (max-width: 768px) {
-  .bn-container {
-    font-size: 18px;
-  }
+.bn-container [contenteditable="true"] li {
+  padding: 0.2em 0;
+  line-height: 1.5;
+}
 
-  .bn-container [contenteditable="true"] {
-    font-size: 18px;
-    line-height: 1.6;
-  }
+.bn-container [contenteditable="true"] blockquote {
+  margin: 0.5em 0;
+  padding-left: 1em;
+  border-left: 3px solid rgba(55, 53, 47, 0.16);
+  color: rgba(55, 53, 47, 0.8);
+}
 
-  .bn-container h1 {
-    font-size: 28px !important;
-  }
+.bn-container [contenteditable="true"] code {
+  font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, Courier, monospace;
+  font-size: 85%;
+  background: rgba(135, 131, 120, 0.15);
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+}
 
-  .bn-container h2 {
-    font-size: 24px !important;
-  }
+.bn-container [contenteditable="true"] pre {
+  background: rgb(247, 246, 243);
+  padding: 1em;
+  border-radius: 3px;
+  margin: 0.5em 0;
+  overflow-x: auto;
+}
 
-  .bn-container h3 {
-    font-size: 20px !important;
-  }
+.bn-container [contenteditable="true"] img {
+  max-width: 100%;
+  height: auto;
+  margin: 0.5em 0;
+  border-radius: 3px;
+}
 
-  .bn-add-block {
-    width: 28px;
-    height: 28px;
-    left: -28px;
-  }
+.bn-container [contenteditable="true"] a {
+  color: rgb(35, 131, 226);
+  text-decoration: underline;
+  text-decoration-color: rgba(35, 131, 226, 0.4);
+}
 
-  /* Aumentar el área tocable de los botones */
-  button {
-    min-width: 44px;
-    min-height: 44px;
-    padding: 10px;
-  }
+.bn-container [contenteditable="true"] a:hover {
+  text-decoration-color: rgb(35, 131, 226);
+}
+
+/* Estilos de selección y foco */
+.bn-container [contenteditable="true"]:focus-within {
+  background: transparent;
+}
+
+.bn-container [contenteditable="true"] *::selection {
+  background: rgba(35, 131, 226, 0.2);
+}
+
+/* Estilos del menú de tipos de bloques */
+.tippy-box {
+  background: white !important;
+  color: rgb(55, 53, 47) !important;
+  border-radius: 4px !important;
+  box-shadow: rgb(15 15 15 / 5%) 0px 0px 0px 1px, rgb(15 15 15 / 10%) 0px 3px 6px, rgb(15 15 15 / 20%) 0px 9px 24px !important;
+  padding: 6px 4px !important;
+  max-width: 280px !important;
+}
+
+.tippy-content {
+  padding: 0 !important;
 } 
