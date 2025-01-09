@@ -105,3 +105,8 @@ jobs:
 
           # Verificar que la aplicación responde
           curl -v http://localhost:3001/api/health || true 
+
+          - name: Check server health
+            run: |
+              echo "Checking server health..."
+              curl -v http://145.223.100.119:3001/api/health || true 

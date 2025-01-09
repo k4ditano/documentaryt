@@ -2,7 +2,7 @@ import axios, { AxiosRequestHeaders, InternalAxiosRequestConfig } from 'axios';
 import { getToken, setToken, removeToken } from './authService';
 
 // Configurar la URL base según el entorno
-const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const apiUrl = import.meta.env.VITE_API_URL || 'http://145.223.100.119:3001/api';
 axios.defaults.baseURL = apiUrl.replace('/api/api', '/api');
 
 // Configuración adicional
