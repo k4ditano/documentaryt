@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { Box, Button, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { Task, TaskStatus } from '../services/taskService';
@@ -19,6 +19,8 @@ const TaskList: React.FC = () => {
         completed: true
     });
     const [loading, setLoading] = useState(false);
+    const isInitialMount = useRef(true);
+    const updateTimeoutRef = useRef<NodeJS.Timeout>();
 
     const loadTasks = useCallback(async () => {
         if (loading) return;
@@ -38,23 +40,47 @@ const TaskList: React.FC = () => {
     }, [loading]);
 
     useEffect(() => {
-        loadTasks();
+        if (isInitialMount.current) {
+            loadTasks();
+            isInitialMount.current = false;
+            return;
+        }
+    }, [loadTasks]);
 
+    useEffect(() => {
         // Suscribirse a eventos de websocket
         const handleTaskUpdate = (updatedTask: Task) => {
-            setTasks(prevTasks => 
-                prevTasks.map(task => 
-                    task.id === updatedTask.id ? updatedTask : task
-                )
-            );
+            if (updateTimeoutRef.current) {
+                clearTimeout(updateTimeoutRef.current);
+            }
+            
+            updateTimeoutRef.current = setTimeout(() => {
+                setTasks(prevTasks => 
+                    prevTasks.map(task => 
+                        task.id === updatedTask.id ? updatedTask : task
+                    )
+                );
+            }, 300);
         };
 
         const handleTaskCreate = (newTask: Task) => {
-            setTasks(prevTasks => [...prevTasks, newTask]);
+            if (updateTimeoutRef.current) {
+                clearTimeout(updateTimeoutRef.current);
+            }
+            
+            updateTimeoutRef.current = setTimeout(() => {
+                setTasks(prevTasks => [...prevTasks, newTask]);
+            }, 300);
         };
 
         const handleTaskDelete = (taskId: number) => {
-            setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
+            if (updateTimeoutRef.current) {
+                clearTimeout(updateTimeoutRef.current);
+            }
+            
+            updateTimeoutRef.current = setTimeout(() => {
+                setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
+            }, 300);
         };
 
         socketService.on('task:update', handleTaskUpdate);
@@ -65,8 +91,11 @@ const TaskList: React.FC = () => {
             socketService.off('task:update', handleTaskUpdate);
             socketService.off('task:create', handleTaskCreate);
             socketService.off('task:delete', handleTaskDelete);
+            if (updateTimeoutRef.current) {
+                clearTimeout(updateTimeoutRef.current);
+            }
         };
-    }, [loadTasks]);
+    }, []);
 
     const handleTaskMove = useCallback(async (taskId: number, newStatus: TaskStatus) => {
         try {
