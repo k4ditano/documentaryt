@@ -6,9 +6,10 @@ class SocketService {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectTimer: NodeJS.Timeout | null = null;
+  private isConnecting = false;
 
   connect() {
-    if (this.socket) return;
+    if (this.socket || this.isConnecting) return;
 
     const token = getToken();
     if (!token) {
@@ -17,15 +18,14 @@ class SocketService {
     }
 
     try {
+      this.isConnecting = true;
       const baseUrl = import.meta.env.VITE_API_URL.replace('/api', '') || '';
       console.log('Conectando a websocket en:', baseUrl);
 
       this.socket = io(baseUrl, {
         auth: { token },
         transports: ['websocket', 'polling'],
-        reconnection: true,
-        reconnectionAttempts: this.maxReconnectAttempts,
-        reconnectionDelay: 1000,
+        reconnection: false,
         timeout: 30000,
         path: '/socket.io/',
         autoConnect: false
@@ -35,6 +35,7 @@ class SocketService {
       this.socket.connect();
     } catch (error) {
       console.error('Error al configurar el socket:', error);
+      this.isConnecting = false;
       this.scheduleReconnect();
     }
   }
@@ -45,6 +46,7 @@ class SocketService {
     this.socket.on('connect', () => {
       console.log('Conectado al servidor de websockets');
       this.reconnectAttempts = 0;
+      this.isConnecting = false;
       if (this.reconnectTimer) {
         clearTimeout(this.reconnectTimer);
         this.reconnectTimer = null;
@@ -53,6 +55,7 @@ class SocketService {
 
     this.socket.on('connect_error', (error) => {
       console.error('Error de conexión websocket:', error);
+      this.isConnecting = false;
       this.reconnectAttempts++;
       
       if (this.reconnectAttempts >= this.maxReconnectAttempts) {
@@ -65,7 +68,9 @@ class SocketService {
 
     this.socket.on('disconnect', (reason) => {
       console.log('Desconectado del servidor de websockets. Razón:', reason);
-      if (reason === 'io server disconnect') {
+      this.isConnecting = false;
+      
+      if (reason === 'io server disconnect' || reason === 'transport close') {
         console.log('Reconectando por desconexión del servidor...');
         this.scheduleReconnect();
       }
@@ -73,22 +78,29 @@ class SocketService {
 
     this.socket.on('error', (error) => {
       console.error('Error de websocket:', error);
-      this.scheduleReconnect();
+      this.isConnecting = false;
+      if (error.toString().includes('auth') || error.toString().includes('timeout')) {
+        this.scheduleReconnect();
+      }
     });
   }
 
   private scheduleReconnect() {
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer);
+    if (this.reconnectTimer || this.isConnecting) {
+      return;
     }
+    
     this.reconnectTimer = setTimeout(() => {
-      console.log('Intentando reconectar...');
-      this.disconnect();
-      this.connect();
+      if (!this.isConnecting) {
+        console.log('Intentando reconectar...');
+        this.disconnect();
+        this.connect();
+      }
     }, 5000);
   }
 
   disconnect() {
+    this.isConnecting = false;
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
@@ -101,7 +113,7 @@ class SocketService {
   }
 
   on(event: string, callback: (...args: any[]) => void) {
-    if (!this.socket) {
+    if (!this.socket && !this.isConnecting) {
       console.warn('Intentando suscribirse a evento sin conexión socket:', event);
       this.connect();
     }
@@ -117,7 +129,7 @@ class SocketService {
   }
 
   emit(event: string, data: any) {
-    if (!this.socket) {
+    if (!this.socket && !this.isConnecting) {
       console.warn('Intentando emitir evento sin conexión socket:', event);
       this.connect();
     }
