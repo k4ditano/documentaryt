@@ -1,28 +1,30 @@
-import React from 'react';
-import { Box, Typography, Button } from '@mui/material';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Box, Button, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import { Task, TaskStatus, taskService } from '../services/taskService';
+import { Task, TaskStatus } from '../services/taskService';
+import { taskService } from '../services/taskService';
 import TaskDialog from './TaskDialog';
-import MainLayout from './layout/MainLayout';
 import DraggableTaskList from './DraggableTaskList';
+import MainLayout from '../components/layout/MainLayout';
+import socketService from '../services/socketService';
 
 const TaskList: React.FC = () => {
-    const [tasks, setTasks] = React.useState<Task[]>([]);
-    const [openDialog, setOpenDialog] = React.useState(false);
-    const [openViewDialog, setOpenViewDialog] = React.useState(false);
-    const [selectedTask, setSelectedTask] = React.useState<Task | null>(null);
-    const [expandedStates, setExpandedStates] = React.useState<Record<string, boolean>>({
+    const [tasks, setTasks] = useState<Task[]>([]);
+    const [openDialog, setOpenDialog] = useState(false);
+    const [openViewDialog, setOpenViewDialog] = useState(false);
+    const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+    const [expandedStates, setExpandedStates] = useState<Record<string, boolean>>({
         pending: true,
         in_progress: true,
         completed: true
     });
+    const [loading, setLoading] = useState(false);
 
-    React.useEffect(() => {
-        loadTasks();
-    }, []);
-
-    const loadTasks = async () => {
+    const loadTasks = useCallback(async () => {
+        if (loading) return;
+        
         try {
+            setLoading(true);
             console.log('Cargando tareas...');
             const fetchedTasks = await taskService.getAllTasks();
             console.log('Tareas cargadas:', fetchedTasks);
@@ -30,10 +32,43 @@ const TaskList: React.FC = () => {
         } catch (error) {
             console.error('Error al cargar las tareas:', error);
             setTasks([]);
+        } finally {
+            setLoading(false);
         }
-    };
+    }, [loading]);
 
-    const handleTaskMove = async (taskId: number, newStatus: TaskStatus) => {
+    useEffect(() => {
+        loadTasks();
+
+        // Suscribirse a eventos de websocket
+        const handleTaskUpdate = (updatedTask: Task) => {
+            setTasks(prevTasks => 
+                prevTasks.map(task => 
+                    task.id === updatedTask.id ? updatedTask : task
+                )
+            );
+        };
+
+        const handleTaskCreate = (newTask: Task) => {
+            setTasks(prevTasks => [...prevTasks, newTask]);
+        };
+
+        const handleTaskDelete = (taskId: number) => {
+            setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
+        };
+
+        socketService.on('task:update', handleTaskUpdate);
+        socketService.on('task:create', handleTaskCreate);
+        socketService.on('task:delete', handleTaskDelete);
+
+        return () => {
+            socketService.off('task:update', handleTaskUpdate);
+            socketService.off('task:create', handleTaskCreate);
+            socketService.off('task:delete', handleTaskDelete);
+        };
+    }, [loadTasks]);
+
+    const handleTaskMove = useCallback(async (taskId: number, newStatus: TaskStatus) => {
         try {
             const taskToUpdate = tasks.find(t => t.id === taskId);
             if (!taskToUpdate) {
@@ -54,34 +89,34 @@ const TaskList: React.FC = () => {
         } catch (error) {
             console.error('Error al actualizar el estado de la tarea:', error);
         }
-    };
+    }, [tasks]);
 
-    const handleAddTask = () => {
+    const handleAddTask = useCallback(() => {
         setSelectedTask(null);
         setOpenDialog(true);
-    };
+    }, []);
 
-    const handleEditTask = (task: Task) => {
+    const handleEditTask = useCallback((task: Task) => {
         setSelectedTask(task);
         setOpenDialog(true);
-    };
+    }, []);
 
-    const handleViewTask = (task: Task) => {
+    const handleViewTask = useCallback((task: Task) => {
         console.log('Visualizando tarea:', task);
         setSelectedTask(task);
         setOpenViewDialog(true);
-    };
+    }, []);
 
-    const handleDeleteTask = async (id: number) => {
+    const handleDeleteTask = useCallback(async (id: number) => {
         try {
             await taskService.deleteTask(id);
-            setTasks(tasks.filter(task => task.id !== id));
+            setTasks(prevTasks => prevTasks.filter(task => task.id !== id));
         } catch (error) {
             console.error('Error deleting task:', error);
         }
-    };
+    }, []);
 
-    const handleSaveTask = async (taskData: Partial<Task>) => {
+    const handleSaveTask = useCallback(async (taskData: Partial<Task>) => {
         try {
             console.log('Guardando tarea con datos:', taskData);
             if (selectedTask) {
@@ -95,13 +130,11 @@ const TaskList: React.FC = () => {
                 });
                 console.log('Tarea actualizada:', updatedTask);
                 
-                // Actualizar el estado local con la tarea actualizada
                 setTasks(prevTasks => 
                     prevTasks.map(task => 
                         task.id === updatedTask.id ? updatedTask : task
                     )
                 );
-                // Actualizar la tarea seleccionada
                 setSelectedTask(updatedTask);
             } else {
                 const newTask = await taskService.createTask({
@@ -115,30 +148,30 @@ const TaskList: React.FC = () => {
         } catch (error) {
             console.error('Error saving task:', error);
         }
-    };
+    }, [selectedTask]);
 
-    const handleStatusChange = async (newStatus: TaskStatus) => {
+    const handleStatusChange = useCallback(async (newStatus: TaskStatus) => {
         if (selectedTask) {
             try {
                 const updatedTask = await taskService.updateTask(selectedTask.id, {
                     ...selectedTask,
                     status: newStatus
                 });
-                setTasks(tasks.map(task => 
+                setTasks(prevTasks => prevTasks.map(task => 
                     task.id === updatedTask.id ? updatedTask : task
                 ));
             } catch (error) {
                 console.error('Error updating task status:', error);
             }
         }
-    };
+    }, [selectedTask]);
 
-    const toggleStateExpansion = (stateId: string) => {
+    const toggleStateExpansion = useCallback((stateId: string) => {
         setExpandedStates(prev => ({
             ...prev,
             [stateId]: !prev[stateId]
         }));
-    };
+    }, []);
 
     return (
         <MainLayout>
@@ -199,6 +232,6 @@ const TaskList: React.FC = () => {
             </Box>
         </MainLayout>
     );
-};
+}
 
-export default TaskList; 
+export default React.memo(TaskList); 

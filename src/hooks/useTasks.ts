@@ -17,42 +17,49 @@ export const useTasks = (): UseTasksReturn => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const fetchTasks = useCallback(async () => {
+    if (!isInitialLoad && !loading) return; // Solo cargar en el montaje inicial o cuando se solicite explícitamente
+    
     try {
       setLoading(true);
       setError(null);
       const response = await axios.get<Task[]>('/api/tasks');
       setTasks(response.data);
+      setIsInitialLoad(false);
     } catch (err) {
       setError('Error al cargar las tareas');
       console.error('Error fetching tasks:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isInitialLoad, loading]);
 
   useEffect(() => {
     fetchTasks();
 
     // Suscribirse a actualizaciones via websocket
-    socketService.on('task:update', (data: Task) => {
+    const handleUpdate = (data: Task) => {
       setTasks(prev => prev.map(t => t.id === data.id ? data : t));
-    });
+    };
 
-    socketService.on('task:create', (data: Task) => {
+    const handleCreate = (data: Task) => {
       setTasks(prev => [...prev, data]);
-    });
+    };
 
-    socketService.on('task:delete', (id: string) => {
+    const handleDelete = (id: string) => {
       setTasks(prev => prev.filter(t => t.id !== id));
-    });
+    };
+
+    socketService.on('task:update', handleUpdate);
+    socketService.on('task:create', handleCreate);
+    socketService.on('task:delete', handleDelete);
 
     return () => {
-      // Limpiar suscripciones
-      socketService.off('task:update');
-      socketService.off('task:create');
-      socketService.off('task:delete');
+      socketService.off('task:update', handleUpdate);
+      socketService.off('task:create', handleCreate);
+      socketService.off('task:delete', handleDelete);
     };
   }, [fetchTasks]);
 

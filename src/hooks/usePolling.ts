@@ -20,15 +20,16 @@ export function usePolling<T>(
   options: PollingOptions = {}
 ) {
   const {
-    interval = 30000, // 30 segundos por defecto
+    interval = 300000, // 5 minutos por defecto
     immediate = true,
-    cacheTime = 5000 // 5 segundos de caché
+    cacheTime = 60000 // 1 minuto de caché
   } = options;
 
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout>();
+  const isInitialMount = useRef(true);
 
   const fetchData = useCallback(async (force = false) => {
     const now = Date.now();
@@ -40,6 +41,9 @@ export function usePolling<T>(
       return;
     }
 
+    // No realizar la petición si ya hay una en curso
+    if (loading) return;
+
     try {
       setLoading(true);
       const result = await fetchFn();
@@ -48,25 +52,33 @@ export function usePolling<T>(
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Error al obtener datos'));
+      // Si hay error, mantener los datos anteriores del caché si existen
+      if (cachedData) {
+        setData(cachedData.data);
+      }
     } finally {
       setLoading(false);
     }
-  }, [fetchFn, key, cacheTime]);
+  }, [fetchFn, key, cacheTime, loading]);
 
   useEffect(() => {
+    // Solo hacer el fetch inicial si immediate es true
+    if (immediate || !isInitialMount.current) {
+      fetchData();
+    }
+    isInitialMount.current = false;
+
     // Suscribirse a actualizaciones vía websocket
     socketService.on(`update:${key}`, () => {
       fetchData(true); // Forzar actualización al recibir evento
     });
 
-    if (immediate) {
-      fetchData();
-    }
-
     // Configurar polling con intervalo
-    timeoutRef.current = setInterval(() => {
-      fetchData();
-    }, interval);
+    if (interval > 0) {
+      timeoutRef.current = setInterval(() => {
+        fetchData();
+      }, interval);
+    }
 
     return () => {
       if (timeoutRef.current) {
@@ -76,5 +88,11 @@ export function usePolling<T>(
     };
   }, [fetchData, immediate, interval, key]);
 
-  return { data, loading, error, refetch: () => fetchData(true) };
+  return {
+    data,
+    loading,
+    error,
+    refetch: () => fetchData(true),
+    clearCache: () => cache.delete(key)
+  };
 } 
