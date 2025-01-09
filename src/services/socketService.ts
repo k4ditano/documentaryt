@@ -2,141 +2,118 @@ import io, { Socket } from 'socket.io-client';
 import { getToken } from './authService';
 
 class SocketService {
-  private socket: Socket | null = null;
-  private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
-  private reconnectTimer: NodeJS.Timeout | null = null;
-  private isConnecting = false;
+    private socket: Socket | null = null;
+    private reconnectAttempts = 0;
+    private maxReconnectAttempts = 5;
+    private reconnectDelay = 5000;
+    private reconnectTimer: NodeJS.Timeout | null = null;
 
-  connect() {
-    if (this.socket || this.isConnecting) return;
-
-    const token = getToken();
-    if (!token) {
-      console.error('No se puede conectar al websocket: Token no encontrado');
-      return;
+    constructor() {
+        this.initSocket();
     }
 
-    try {
-      this.isConnecting = true;
-      const baseUrl = import.meta.env.VITE_API_URL.replace('/api', '') || '';
-      console.log('Conectando a websocket en:', baseUrl);
+    private initSocket() {
+        const token = getToken();
+        if (!token) {
+            console.log('No hay token disponible para la conexión websocket');
+            return;
+        }
 
-      this.socket = io(baseUrl, {
-        auth: { token },
-        transports: ['websocket', 'polling'],
-        reconnection: false,
-        timeout: 30000,
-        path: '/socket.io/',
-        autoConnect: false
-      });
+        const wsUrl = import.meta.env.VITE_WS_URL || 'http://localhost:3001';
 
-      this.setupEventHandlers();
-      this.socket.connect();
-    } catch (error) {
-      console.error('Error al configurar el socket:', error);
-      this.isConnecting = false;
-      this.scheduleReconnect();
+        if (this.socket?.connected) {
+            console.log('Ya existe una conexión websocket activa');
+            return;
+        }
+
+        this.socket = io(wsUrl, {
+            auth: { token },
+            transports: ['websocket'],
+            reconnection: true,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 5000,
+            reconnectionAttempts: 5
+        });
+
+        this.setupEventListeners();
     }
-  }
 
-  private setupEventHandlers() {
-    if (!this.socket) return;
+    private setupEventListeners() {
+        if (!this.socket) return;
 
-    this.socket.on('connect', () => {
-      console.log('Conectado al servidor de websockets');
-      this.reconnectAttempts = 0;
-      this.isConnecting = false;
-      if (this.reconnectTimer) {
-        clearTimeout(this.reconnectTimer);
-        this.reconnectTimer = null;
-      }
-    });
+        this.socket.on('connect', () => {
+            console.log('Conexión websocket establecida');
+            this.reconnectAttempts = 0;
+            if (this.reconnectTimer) {
+                clearTimeout(this.reconnectTimer);
+                this.reconnectTimer = null;
+            }
+        });
 
-    this.socket.on('connect_error', (error) => {
-      console.error('Error de conexión websocket:', error);
-      this.isConnecting = false;
-      this.reconnectAttempts++;
-      
-      if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-        console.error('Máximo número de intentos de reconexión alcanzado');
-        this.disconnect();
-      } else {
-        this.scheduleReconnect();
-      }
-    });
+        this.socket.on('disconnect', (reason) => {
+            console.log('Desconexión websocket:', reason);
+            if (reason === 'io server disconnect') {
+                this.attemptReconnect();
+            }
+        });
 
-    this.socket.on('disconnect', (reason) => {
-      console.log('Desconectado del servidor de websockets. Razón:', reason);
-      this.isConnecting = false;
-      
-      if (reason === 'io server disconnect' || reason === 'transport close') {
-        console.log('Reconectando por desconexión del servidor...');
-        this.scheduleReconnect();
-      }
-    });
+        this.socket.on('connect_error', (error) => {
+            console.error('Error de conexión websocket:', error);
+            this.attemptReconnect();
+        });
 
-    this.socket.on('error', (error) => {
-      console.error('Error de websocket:', error);
-      this.isConnecting = false;
-      if (error.toString().includes('auth') || error.toString().includes('timeout')) {
-        this.scheduleReconnect();
-      }
-    });
-  }
-
-  private scheduleReconnect() {
-    if (this.reconnectTimer || this.isConnecting) {
-      return;
+        this.socket.on('error', (error) => {
+            console.error('Error en websocket:', error);
+        });
     }
-    
-    this.reconnectTimer = setTimeout(() => {
-      if (!this.isConnecting) {
-        console.log('Intentando reconectar...');
-        this.disconnect();
-        this.connect();
-      }
-    }, 5000);
-  }
 
-  disconnect() {
-    this.isConnecting = false;
-    if (this.socket) {
-      this.socket.disconnect();
-      this.socket = null;
-      this.reconnectAttempts = 0;
-    }
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer);
-      this.reconnectTimer = null;
-    }
-  }
+    private attemptReconnect() {
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+            console.log('Máximo número de intentos de reconexión alcanzado');
+            return;
+        }
 
-  on(event: string, callback: (...args: any[]) => void) {
-    if (!this.socket && !this.isConnecting) {
-      console.warn('Intentando suscribirse a evento sin conexión socket:', event);
-      this.connect();
-    }
-    if (this.socket) {
-      this.socket.on(event, callback);
-    }
-  }
+        if (this.reconnectTimer) {
+            clearTimeout(this.reconnectTimer);
+        }
 
-  off(event: string, callback?: (...args: any[]) => void) {
-    if (this.socket) {
-      this.socket.off(event, callback);
+        this.reconnectTimer = setTimeout(() => {
+            console.log(`Intento de reconexión ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts}`);
+            this.reconnectAttempts++;
+            this.initSocket();
+        }, this.reconnectDelay);
     }
-  }
 
-  emit(event: string, data: any) {
-    if (!this.socket && !this.isConnecting) {
-      console.warn('Intentando emitir evento sin conexión socket:', event);
-      this.connect();
+    public on<T>(event: string, callback: (data: T) => void) {
+        if (!this.socket) {
+            this.initSocket();
+        }
+        this.socket?.on(event, callback);
     }
-    if (this.socket) {
-      this.socket.emit(event, data);
+
+    public off<T>(event: string, callback: (data: T) => void) {
+        this.socket?.off(event, callback);
     }
-  }
+
+    public emit<T>(event: string, data: T) {
+        if (!this.socket?.connected) {
+            console.log('No hay conexión websocket activa');
+            return;
+        }
+        this.socket.emit(event, data);
+    }
+
+    public disconnect() {
+        if (this.socket) {
+            this.socket.disconnect();
+            this.socket = null;
+        }
+        if (this.reconnectTimer) {
+            clearTimeout(this.reconnectTimer);
+            this.reconnectTimer = null;
+        }
+    }
 }
 
-export default new SocketService(); 
+const socketService = new SocketService();
+export default socketService; 

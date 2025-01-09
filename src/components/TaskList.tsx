@@ -21,9 +21,11 @@ const TaskList: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const isInitialMount = useRef(true);
     const updateTimeoutRef = useRef<NodeJS.Timeout>();
+    const lastUpdateRef = useRef<number>(0);
 
     const loadTasks = useCallback(async () => {
-        if (loading) return;
+        const now = Date.now();
+        if (loading || (now - lastUpdateRef.current < 5000)) return;
         
         try {
             setLoading(true);
@@ -31,6 +33,7 @@ const TaskList: React.FC = () => {
             const fetchedTasks = await taskService.getAllTasks();
             console.log('Tareas cargadas:', fetchedTasks);
             setTasks(Array.isArray(fetchedTasks) ? fetchedTasks : []);
+            lastUpdateRef.current = now;
         } catch (error) {
             console.error('Error al cargar las tareas:', error);
             setTasks([]);
@@ -43,23 +46,21 @@ const TaskList: React.FC = () => {
         if (isInitialMount.current) {
             loadTasks();
             isInitialMount.current = false;
-            return;
         }
     }, [loadTasks]);
 
     useEffect(() => {
-        // Suscribirse a eventos de websocket
         const handleTaskUpdate = (updatedTask: Task) => {
             if (updateTimeoutRef.current) {
                 clearTimeout(updateTimeoutRef.current);
             }
             
             updateTimeoutRef.current = setTimeout(() => {
-                setTasks(prevTasks => 
-                    prevTasks.map(task => 
-                        task.id === updatedTask.id ? updatedTask : task
-                    )
-                );
+                setTasks(prevTasks => {
+                    const taskExists = prevTasks.some(task => task.id === updatedTask.id);
+                    if (!taskExists) return prevTasks;
+                    return prevTasks.map(task => task.id === updatedTask.id ? updatedTask : task);
+                });
             }, 300);
         };
 
@@ -69,7 +70,11 @@ const TaskList: React.FC = () => {
             }
             
             updateTimeoutRef.current = setTimeout(() => {
-                setTasks(prevTasks => [...prevTasks, newTask]);
+                setTasks(prevTasks => {
+                    const taskExists = prevTasks.some(task => task.id === newTask.id);
+                    if (taskExists) return prevTasks;
+                    return [...prevTasks, newTask];
+                });
             }, 300);
         };
 

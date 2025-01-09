@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getToken } from './authService';
 
 export type TaskStatus = 'pending' | 'in_progress' | 'completed';
 export type TaskPriority = 'high' | 'medium' | 'low';
@@ -19,18 +20,21 @@ export interface Task {
 const BASE_URL = import.meta.env.VITE_API_URL || '';
 const API_URL = `${BASE_URL}/tasks`;
 
-// Configurar axios para incluir credenciales
+// Configurar axios para incluir credenciales y token
 axios.defaults.withCredentials = true;
 
-// Interceptor para manejar errores
-axios.interceptors.response.use(
-    response => response,
-    error => {
-        console.error('Error en la petición:', error);
-        if (error.response) {
-            console.error('Respuesta del servidor:', error.response.data);
+// Interceptor para agregar el token a todas las solicitudes
+axios.interceptors.request.use(
+    config => {
+        const token = getToken();
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
         }
-        throw error;
+        return config;
+    },
+    error => {
+        console.error('Error en la solicitud:', error);
+        return Promise.reject(error);
     }
 );
 
@@ -41,50 +45,32 @@ export const taskService = {
             console.log('Solicitando todas las tareas a:', API_URL);
             const response = await axios.get<Task[]>(API_URL);
             console.log('Respuesta getAllTasks:', response.data);
-            return response.data || [];
+            return Array.isArray(response.data) ? response.data : [];
         } catch (error) {
             console.error('Error al obtener las tareas:', error);
-            throw new Error('Error al cargar los datos: ' + (error as Error).message);
+            if (axios.isAxiosError(error) && error.response?.status === 401) {
+                // Token expirado o inválido
+                window.location.href = '/login';
+            }
+            return [];
         }
     },
 
     // Crear una nueva tarea
     createTask: async (task: Omit<Task, 'id' | 'created_at' | 'updated_at' | 'user_id'>): Promise<Task> => {
-        console.log('Creando tarea con datos:', task);
-        const taskWithDefaults = {
-            ...task,
-            status: task.status || 'pending',
-            priority: task.priority || 'medium',
-            linked_pages: task.linked_pages || []
-        };
-        console.log('Enviando tarea con defaults:', taskWithDefaults);
-        const response = await axios.post<Task>(API_URL, taskWithDefaults, {
-            withCredentials: true
-        });
-        console.log('Respuesta de createTask:', response.data);
-        return response.data;
+        try {
+            const response = await axios.post<Task>(API_URL, task);
+            return response.data;
+        } catch (error) {
+            console.error('Error al crear la tarea:', error);
+            throw error;
+        }
     },
 
-    // Actualizar una tarea
+    // Actualizar una tarea existente
     updateTask: async (id: number, taskData: Partial<Task>): Promise<Task> => {
         try {
-            console.log('Actualizando tarea:', id);
-            console.log('Datos completos recibidos:', taskData);
-            console.log('Páginas enlazadas a enviar:', taskData.linked_pages);
-            
-            // Asegurarnos de que los datos estén en el formato correcto
-            const dataToSend = {
-                ...taskData,
-                linked_pages: Array.isArray(taskData.linked_pages) ? taskData.linked_pages : [],
-                id: id
-            };
-            
-            console.log('Datos completos a enviar al servidor:', dataToSend);
-            const response = await axios.put<Task>(`${API_URL}/${id}`, dataToSend, {
-                withCredentials: true
-            });
-            console.log('Respuesta completa del servidor:', response.data);
-            console.log('Páginas enlazadas en la respuesta:', response.data.linked_pages);
+            const response = await axios.put<Task>(`${API_URL}/${id}`, taskData);
             return response.data;
         } catch (error) {
             console.error('Error al actualizar la tarea:', error);
@@ -94,19 +80,22 @@ export const taskService = {
 
     // Eliminar una tarea
     deleteTask: async (id: number): Promise<void> => {
-        console.log(`Eliminando tarea ${id}`);
-        await axios.delete(`${API_URL}/${id}`, {
-            withCredentials: true
-        });
+        try {
+            await axios.delete(`${API_URL}/${id}`);
+        } catch (error) {
+            console.error('Error al eliminar la tarea:', error);
+            throw error;
+        }
     },
 
-    // Obtener tareas por rango de fechas (para el calendario)
+    // Obtener tareas por rango de fechas
     getTasksByDateRange: async (start: string, end: string): Promise<Task[]> => {
-        console.log(`Obteniendo tareas entre ${start} y ${end}`);
-        const response = await axios.get<Task[]>(`${API_URL}/calendar/${start}/${end}`, {
-            withCredentials: true
-        });
-        console.log('Respuesta de getTasksByDateRange:', response.data);
-        return response.data;
+        try {
+            const response = await axios.get<Task[]>(`${API_URL}/calendar/${start}/${end}`);
+            return Array.isArray(response.data) ? response.data : [];
+        } catch (error) {
+            console.error('Error al obtener las tareas por rango de fechas:', error);
+            return [];
+        }
     }
 }; 

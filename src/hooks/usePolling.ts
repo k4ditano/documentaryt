@@ -69,9 +69,11 @@ export function usePolling<T>(
     isInitialMount.current = false;
 
     // Suscribirse a actualizaciones vía websocket
-    socketService.on(`update:${key}`, () => {
+    const handleUpdate = () => {
       fetchData(true); // Forzar actualización al recibir evento
-    });
+    };
+
+    socketService.on(`update:${key}`, handleUpdate);
 
     // Configurar polling con intervalo
     if (interval > 0) {
@@ -84,7 +86,7 @@ export function usePolling<T>(
       if (timeoutRef.current) {
         clearInterval(timeoutRef.current);
       }
-      socketService.off(`update:${key}`);
+      socketService.off(`update:${key}`, handleUpdate);
     };
   }, [fetchData, immediate, interval, key]);
 
