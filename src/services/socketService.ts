@@ -25,8 +25,11 @@ class SocketService {
       reconnectionAttempts: this.maxReconnectAttempts,
       reconnectionDelay: 1000,
       timeout: 10000,
-      path: '/socket.io/'
+      path: '/socket.io/',
+      autoConnect: false
     });
+
+    this.socket.connect();
 
     this.setupEventHandlers();
   }

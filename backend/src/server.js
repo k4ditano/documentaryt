@@ -107,7 +107,7 @@ app.use('/api/*', (req, res) => {
 // Configuración de Socket.IO
 const io = new Server(httpServer, {
   cors: {
-    origin: ["http://145.223.100.119", "http://145.223.100.119:3001"],
+    origin: ["http://145.223.100.119:3001"],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
@@ -118,13 +118,16 @@ const io = new Server(httpServer, {
   pingTimeout: 60000,
   pingInterval: 25000,
   connectTimeout: 45000,
-  maxHttpBufferSize: 1e8
+  maxHttpBufferSize: 1e8,
+  serveClient: false
 });
 
 // Middleware para Socket.IO
 io.use((socket, next) => {
   console.log('Intento de conexión websocket...');
   console.log('Headers de conexión:', socket.handshake.headers);
+  console.log('Auth data:', socket.handshake.auth);
+  
   const token = socket.handshake.auth.token;
   if (!token) {
     console.log('No se proporcionó token en la conexión websocket');

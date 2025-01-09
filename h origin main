@@ -1,0 +1,5 @@
+[33mcommit 7ae04d4c0bd1080f93b2895f862227cc37602ed9[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m
+Author: k4ditano <abeljhinestrosa@gmail.com>
+Date:   Wed Jan 8 22:56:50 2025 +0100
+
+    fix: Corregida configuración de Socket.IO y servidor
