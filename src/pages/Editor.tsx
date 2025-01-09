@@ -10,7 +10,7 @@ import {
   ArrowBack as ArrowBackIcon,
 } from '@mui/icons-material';
 import { useApp } from '../context/AppContext';
-import BlockNoteEditor from '../components/editor/BlockNoteEditor';
+import { BlockNoteEditor } from '../components/editor/BlockNoteEditor';
 import { styled } from '@mui/material/styles';
 import { storageService } from '../services/storageService';
 import MainLayout from '../components/layout/MainLayout';
@@ -335,10 +335,11 @@ const Editor: FC = () => {
                       fullWidth
                     />
                   </TitleContainer>
-                  {content !== null && (
+                  {content !== null && id && (
                     <BlockNoteEditor
-                      content={content}
-                      onChange={handleContentChange}
+                      pageId={id}
+                      initialContent={content}
+                      onSave={handleContentChange}
                     />
                   )}
                 </>
