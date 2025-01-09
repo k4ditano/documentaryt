@@ -55,11 +55,14 @@
   },
   "devDependencies": {
     "@types/is-hotkey": "^0.1.10",
-    "@types/node": "^20.11.19",
+    "@types/jest": "^29.5.14",
+    "@types/lodash": "^4.17.14",
+    "@types/node": "^18.19.70",
     "@types/pdfjs-dist": "^2.10.377",
     "@types/react": "^18.2.55",
     "@types/react-dom": "^18.2.19",
     "@types/react-dropzone": "^5.1.0",
+    "@types/supertest": "^6.0.2",
     "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
@@ -70,7 +73,9 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
     "postcss": "^8.4.49",
-    "typescript": "^5.2.2",
+    "ts-jest": "^29.2.5",
+    "typescript": "^4.9.5",
+    "undici-types": "^7.2.1",
     "vite": "^5.1.0"
   }
 }

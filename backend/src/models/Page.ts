@@ -1,23 +1,27 @@
-import { DataTypes, Model } from 'sequelize';
+import { Model, DataTypes, Optional } from 'sequelize';
 import sequelize from '../config/database';
 
 interface PageAttributes {
-  id: string;
+  id: number;
   title: string;
-  content: string;
-  parent_id: string | null;
+  content: string | null;
+  parent_id: number | null;
+  user_id: number;
   position: number;
-  tags?: string;
+  tags: string;
 }
 
-class Page extends Model<PageAttributes> implements PageAttributes {
-  public id!: string;
+interface PageCreationAttributes extends Optional<PageAttributes, 'id'> {}
+
+class Page extends Model<PageAttributes, PageCreationAttributes> implements PageAttributes {
+  public id!: number;
   public title!: string;
-  public content!: string;
-  public parent_id!: string | null;
+  public content!: string | null;
+  public parent_id!: number | null;
+  public user_id!: number;
   public position!: number;
   public tags!: string;
-  
+
   public readonly created_at!: Date;
   public readonly updated_at!: Date;
 }
@@ -25,8 +29,8 @@ class Page extends Model<PageAttributes> implements PageAttributes {
 Page.init(
   {
     id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
       primaryKey: true,
     },
     title: {
@@ -35,20 +39,40 @@ Page.init(
     },
     content: {
       type: DataTypes.TEXT,
-      allowNull: false,
+      allowNull: true,
     },
     parent_id: {
-      type: DataTypes.UUID,
+      type: DataTypes.INTEGER,
       allowNull: true,
+      references: {
+        model: 'folders',
+        key: 'id',
+      },
+    },
+    user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
     },
     position: {
       type: DataTypes.INTEGER,
-      allowNull: false,
       defaultValue: 0,
     },
     tags: {
-      type: DataTypes.TEXT,
-      allowNull: true,
+      type: DataTypes.STRING,
+      defaultValue: '[]',
+      get() {
+        const rawValue = this.getDataValue('tags');
+        return rawValue ? JSON.parse(rawValue) : [];
+      },
+      set(value: string[] | string) {
+        this.setDataValue('tags', 
+          typeof value === 'string' ? value : JSON.stringify(value)
+        );
+      },
     },
   },
   {

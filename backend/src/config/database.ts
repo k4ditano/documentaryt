@@ -1,16 +1,15 @@
-import { Sequelize } from 'sequelize';
+import { Sequelize, Options } from 'sequelize';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
+// Asegurarnos de que estamos en un entorno ES module
+const __dirname = dirname(fileURLToPath(import.meta.url));
 const dbPath = process.env.DB_PATH || join(__dirname, '../../database.sqlite');
 
-const sequelize = new Sequelize({
+const config: Options = {
   dialect: 'sqlite',
   storage: dbPath,
   logging: process.env.NODE_ENV === 'development',
@@ -18,6 +17,8 @@ const sequelize = new Sequelize({
     timestamps: true,
     underscored: true
   }
-});
+};
+
+const sequelize = new Sequelize(config);
 
 export default sequelize; 
