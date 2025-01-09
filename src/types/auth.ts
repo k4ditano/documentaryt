@@ -21,4 +21,14 @@ export interface LoginCredentials {
 
 export interface RegisterData extends LoginCredentials {
   username: string;
+}
+
+export interface AuthResponse {
+  user: User;
+  token: string;
+}
+
+export interface AuthError {
+  message: string;
+  code?: string;
 } 
