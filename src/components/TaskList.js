@@ -21,6 +21,7 @@ const TaskList = () => {
     const isInitialMount = useRef(true);
     const updateTimeoutRef = useRef();
     const lastUpdateRef = useRef(0);
+    const socketEventsRef = useRef(false);
     const loadTasks = useCallback(async () => {
         const now = Date.now();
         if (loading || (now - lastUpdateRef.current < 5000))
@@ -48,6 +49,8 @@ const TaskList = () => {
         }
     }, [loadTasks]);
     useEffect(() => {
+        if (socketEventsRef.current) return;
+        socketEventsRef.current = true;
         const handleTaskUpdate = (updatedTask) => {
             if (updateTimeoutRef.current) {
                 clearTimeout(updateTimeoutRef.current);
@@ -59,7 +62,7 @@ const TaskList = () => {
                         return prevTasks;
                     return prevTasks.map(task => task.id === updatedTask.id ? updatedTask : task);
                 });
-            }, 300);
+            }, 1000);
         };
         const handleTaskCreate = (newTask) => {
             if (updateTimeoutRef.current) {
@@ -72,7 +75,7 @@ const TaskList = () => {
                         return prevTasks;
                     return [...prevTasks, newTask];
                 });
-            }, 300);
+            }, 1000);
         };
         const handleTaskDelete = (taskId) => {
             if (updateTimeoutRef.current) {
@@ -80,12 +83,13 @@ const TaskList = () => {
             }
             updateTimeoutRef.current = setTimeout(() => {
                 setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
-            }, 300);
+            }, 1000);
         };
         socketService.on('task:update', handleTaskUpdate);
         socketService.on('task:create', handleTaskCreate);
         socketService.on('task:delete', handleTaskDelete);
         return () => {
+            socketEventsRef.current = false;
             socketService.off('task:update', handleTaskUpdate);
             socketService.off('task:create', handleTaskCreate);
             socketService.off('task:delete', handleTaskDelete);

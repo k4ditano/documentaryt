@@ -200,14 +200,26 @@ io.on('connection', (socket) => {
 
 // Función para emitir actualizaciones
 const emitUpdate = (userId, event, data) => {
-  console.log(`Emitiendo evento ${event} para usuario ${userId}`);
-  io.to(`user-${userId}`).emit(event, data);
+    // Evitar emitir eventos si no hay usuario o datos
+    if (!userId || !data) {
+        console.log('Evento no emitido: falta userId o data');
+        return;
+    }
+
+    // Agregar timestamp para control de eventos duplicados
+    const eventData = {
+        ...data,
+        _timestamp: Date.now()
+    };
+
+    console.log(`Emitiendo evento ${event} para usuario ${userId}`);
+    io.to(`user-${userId}`).emit(event, eventData);
 };
 
 // Middleware para inyectar la función emitUpdate en las rutas
 app.use((req, res, next) => {
-  req.emitUpdate = emitUpdate;
-  next();
+    req.emitUpdate = emitUpdate;
+    next();
 });
 
 // Iniciar el servidor HTTP con socket.io

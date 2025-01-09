@@ -41,17 +41,24 @@ axios.interceptors.request.use(
 export const taskService = {
     lastFetch: 0,
     cachedTasks: [] as Task[],
-    cacheTimeout: 5000, // 5 segundos
+    cacheTimeout: 10000, // 10 segundos
+    isFetching: false,
 
     // Obtener todas las tareas
     getAllTasks: async (): Promise<Task[]> => {
         try {
             const now = Date.now();
+            if (taskService.isFetching) {
+                console.log('Ya hay una solicitud en curso');
+                return taskService.cachedTasks;
+            }
+
             if (taskService.cachedTasks.length > 0 && now - taskService.lastFetch < taskService.cacheTimeout) {
                 console.log('Retornando tareas desde caché');
                 return taskService.cachedTasks;
             }
 
+            taskService.isFetching = true;
             console.log('Solicitando todas las tareas a:', API_URL);
             const response = await axios.get<Task[]>(API_URL);
             console.log('Respuesta getAllTasks:', response.data);
@@ -62,10 +69,11 @@ export const taskService = {
         } catch (error) {
             console.error('Error al obtener las tareas:', error);
             if (axios.isAxiosError(error) && error.response?.status === 401) {
-                // Token expirado o inválido
                 window.location.href = '/login';
             }
             return taskService.cachedTasks;
+        } finally {
+            taskService.isFetching = false;
         }
     },
 
@@ -73,6 +81,7 @@ export const taskService = {
     createTask: async (task: Omit<Task, 'id' | 'created_at' | 'updated_at' | 'user_id'>): Promise<Task> => {
         try {
             const response = await axios.post<Task>(API_URL, task);
+            taskService.lastFetch = 0; // Invalidar caché
             return response.data;
         } catch (error) {
             console.error('Error al crear la tarea:', error);
@@ -84,6 +93,7 @@ export const taskService = {
     updateTask: async (id: number, taskData: Partial<Task>): Promise<Task> => {
         try {
             const response = await axios.put<Task>(`${API_URL}/${id}`, taskData);
+            taskService.lastFetch = 0; // Invalidar caché
             return response.data;
         } catch (error) {
             console.error('Error al actualizar la tarea:', error);
@@ -95,6 +105,7 @@ export const taskService = {
     deleteTask: async (id: number): Promise<void> => {
         try {
             await axios.delete(`${API_URL}/${id}`);
+            taskService.lastFetch = 0; // Invalidar caché
         } catch (error) {
             console.error('Error al eliminar la tarea:', error);
             throw error;
