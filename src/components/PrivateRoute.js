@@ -1,11 +1,18 @@
-import { jsx as _jsx, Fragment as _Fragment } from "react/jsx-runtime";
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+
 const PrivateRoute = ({ children }) => {
-    const { user } = useAuth();
-    if (!user) {
-        return _jsx(Navigate, { to: "/login", replace: true });
+    const { user, loading, isAuthenticated } = useAuth();
+    
+    if (loading) {
+        return null;
     }
-    return _jsx(_Fragment, { children: children });
+    
+    if (!isAuthenticated) {
+        return <Navigate to="/login" replace />;
+    }
+    
+    return children;
 };
+
 export default PrivateRoute;

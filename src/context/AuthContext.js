@@ -1,36 +1,36 @@
 import { jsx as _jsx } from "react/jsx-runtime";
 import { createContext, useContext, useState, useEffect } from 'react';
 import { authService } from '../services/authService';
+import { useNavigate } from 'react-router-dom';
 const AuthContext = createContext(undefined);
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const navigate = useNavigate();
     useEffect(() => {
         const initAuth = async () => {
             try {
+                console.log('Iniciando autenticación');
                 setLoading(true);
                 const token = authService.getToken();
+                console.log('Token encontrado:', !!token);
                 if (token) {
                     const userData = await authService.getCurrentUser();
                     if (userData) {
                         setUser(userData);
                         setIsAuthenticated(true);
-                    }
-                    else {
-                        // Si no hay usuario pero hay token, limpiar el token
+                    } else {
                         authService.removeToken();
                         setIsAuthenticated(false);
                     }
                 }
-            }
-            catch (error) {
-                console.error('Error al inicializar autenticación:', error);
+            } catch (error) {
+                console.log('Error específico:', error.message);
                 authService.removeToken();
                 setIsAuthenticated(false);
-            }
-            finally {
+            } finally {
                 setLoading(false);
             }
         };
@@ -79,7 +79,7 @@ export const AuthProvider = ({ children }) => {
             setUser(null);
             setIsAuthenticated(false);
             setError(null);
-            window.location.href = '/login';
+            navigate('/login');
         }
         catch (error) {
             console.error('Error al cerrar sesión:', error);
