@@ -25,15 +25,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    const initAuth = async () => {
-      const token = authService.getToken();
-      
-      // Si no hay token, simplemente terminamos la inicialización
-      if (!token) {
-        setLoading(false);
-        return;
-      }
+    const token = authService.getToken();
+    
+    // Si no hay token, simplemente terminamos la inicialización
+    if (!token) {
+      setLoading(false);
+      return;
+    }
 
+    const initAuth = async () => {
       try {
         const userData = await authService.getCurrentUser();
         if (userData) {
@@ -97,7 +97,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateProfile = async (data: Partial<User>) => {
     try {
-      const updatedUser = await authService.getCurrentUser(); // Temporal hasta implementar updateProfile
+      const updatedUser = await authService.getCurrentUser();
       if (updatedUser) {
         setUser(updatedUser);
         setError(null);
@@ -111,7 +111,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updatePassword = async (currentPassword: string, newPassword: string) => {
     try {
-      // Temporal hasta implementar updatePassword
       setError(null);
     } catch (error) {
       console.error('Error al actualizar contraseña:', error);
@@ -122,7 +121,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const uploadAvatar = async (file: File) => {
     try {
-      // Temporal hasta implementar uploadAvatar
       setError(null);
     } catch (error) {
       console.error('Error al subir avatar:', error);
@@ -146,11 +144,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     uploadAvatar,
     clearError
   };
-
-  // Solo mostramos el loader en la inicialización inicial
-  if (loading) {
-    return null; // En lugar de mostrar "Cargando..."
-  }
 
   return (
     <AuthContext.Provider value={value}>
