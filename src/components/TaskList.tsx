@@ -22,11 +22,16 @@ const TaskList: React.FC = () => {
     const isInitialMount = useRef(true);
     const updateTimeoutRef = useRef<NodeJS.Timeout>();
     const lastUpdateRef = useRef<number>(0);
+    const tasksRef = useRef<Task[]>([]);
     const socketHandlersRef = useRef({
         handleTaskUpdate: null as ((updatedTask: Task) => void) | null,
         handleTaskCreate: null as ((newTask: Task) => void) | null,
         handleTaskDelete: null as ((taskId: number) => void) | null
     });
+
+    useEffect(() => {
+        tasksRef.current = tasks;
+    }, [tasks]);
 
     const loadTasks = useCallback(async () => {
         const now = Date.now();
@@ -37,7 +42,21 @@ const TaskList: React.FC = () => {
             console.log('Cargando tareas...');
             const fetchedTasks = await taskService.getAllTasks();
             console.log('Tareas cargadas:', fetchedTasks);
-            setTasks(Array.isArray(fetchedTasks) ? fetchedTasks : []);
+            
+            const currentTasks = tasksRef.current;
+            const newTasks = Array.isArray(fetchedTasks) ? fetchedTasks : [];
+            
+            const hasChanges = newTasks.length !== currentTasks.length || 
+                             newTasks.some((task, index) => {
+                                 const currentTask = currentTasks[index];
+                                 return !currentTask || 
+                                        JSON.stringify(task) !== JSON.stringify(currentTask);
+                             });
+            
+            if (hasChanges) {
+                setTasks(newTasks);
+            }
+            
             lastUpdateRef.current = now;
         } catch (error) {
             console.error('Error al cargar las tareas:', error);
@@ -55,7 +74,11 @@ const TaskList: React.FC = () => {
     }, [loadTasks]);
 
     useEffect(() => {
+        let isMounted = true;
+        
         const handleTaskUpdate = (updatedTask: Task) => {
+            if (!isMounted) return;
+            
             if (updateTimeoutRef.current) {
                 clearTimeout(updateTimeoutRef.current);
             }
@@ -64,12 +87,20 @@ const TaskList: React.FC = () => {
                 setTasks(prevTasks => {
                     const taskExists = prevTasks.some(task => task.id === updatedTask.id);
                     if (!taskExists) return prevTasks;
-                    return prevTasks.map(task => task.id === updatedTask.id ? updatedTask : task);
+                    
+                    const updatedTasks = prevTasks.map(task => 
+                        task.id === updatedTask.id ? updatedTask : task
+                    );
+                    
+                    const hasChanges = JSON.stringify(updatedTasks) !== JSON.stringify(prevTasks);
+                    return hasChanges ? updatedTasks : prevTasks;
                 });
-            }, 1000);
+            }, 2000);
         };
 
         const handleTaskCreate = (newTask: Task) => {
+            if (!isMounted) return;
+            
             if (updateTimeoutRef.current) {
                 clearTimeout(updateTimeoutRef.current);
             }
@@ -80,17 +111,23 @@ const TaskList: React.FC = () => {
                     if (taskExists) return prevTasks;
                     return [...prevTasks, newTask];
                 });
-            }, 1000);
+            }, 2000);
         };
 
         const handleTaskDelete = (taskId: number) => {
+            if (!isMounted) return;
+            
             if (updateTimeoutRef.current) {
                 clearTimeout(updateTimeoutRef.current);
             }
             
             updateTimeoutRef.current = setTimeout(() => {
-                setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
-            }, 1000);
+                setTasks(prevTasks => {
+                    const taskExists = prevTasks.some(task => task.id === taskId);
+                    if (!taskExists) return prevTasks;
+                    return prevTasks.filter(task => task.id !== taskId);
+                });
+            }, 2000);
         };
 
         socketHandlersRef.current = {
@@ -104,6 +141,8 @@ const TaskList: React.FC = () => {
         socketService.on('task:delete', handleTaskDelete);
 
         return () => {
+            isMounted = false;
+            
             if (socketHandlersRef.current.handleTaskUpdate) {
                 socketService.off('task:update', socketHandlersRef.current.handleTaskUpdate);
             }
