@@ -38,7 +38,11 @@ const httpServer = createServer(app);
 
 // Configuración de CORS
 const corsOptions = {
-  origin: ["http://145.223.100.119", "http://145.223.100.119:3001"],
+  origin: [
+    "http://145.223.100.119",
+    "http://145.223.100.119:3001",
+    "http://145.223.100.119:80"
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
@@ -124,7 +128,11 @@ app.use('/api/*', (req, res) => {
 // Configuración de Socket.IO
 const io = new Server(httpServer, {
   cors: {
-    origin: ["http://145.223.100.119:3001"],
+    origin: [
+      "http://145.223.100.119",
+      "http://145.223.100.119:3001",
+      "http://145.223.100.119:80"
+    ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
