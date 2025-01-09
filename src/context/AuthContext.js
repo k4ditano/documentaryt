@@ -10,31 +10,45 @@ export const AuthProvider = ({ children }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const navigate = useNavigate();
     useEffect(() => {
+        let isMounted = true;
         const initAuth = async () => {
             try {
                 console.log('Iniciando autenticación');
-                setLoading(true);
                 const token = authService.getToken();
                 console.log('Token encontrado:', !!token);
-                if (token) {
-                    const userData = await authService.getCurrentUser();
-                    if (userData) {
-                        setUser(userData);
-                        setIsAuthenticated(true);
-                    } else {
-                        authService.removeToken();
+                
+                if (!token) {
+                    if (isMounted) {
+                        setLoading(false);
                         setIsAuthenticated(false);
                     }
+                    return;
+                }
+
+                const userData = await authService.getCurrentUser();
+                if (userData && isMounted) {
+                    setUser(userData);
+                    setIsAuthenticated(true);
+                } else if (isMounted) {
+                    authService.removeToken();
+                    setIsAuthenticated(false);
                 }
             } catch (error) {
                 console.log('Error específico:', error.message);
-                authService.removeToken();
-                setIsAuthenticated(false);
+                if (isMounted) {
+                    authService.removeToken();
+                    setIsAuthenticated(false);
+                }
             } finally {
-                setLoading(false);
+                if (isMounted) {
+                    setLoading(false);
+                }
             }
         };
         initAuth();
+        return () => {
+            isMounted = false;
+        };
     }, []);
     const login = async (email, password) => {
         try {
