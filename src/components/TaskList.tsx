@@ -8,6 +8,9 @@ import DraggableTaskList from './DraggableTaskList';
 import MainLayout from '../components/layout/MainLayout';
 import socketService from '../services/socketService';
 
+const DEBOUNCE_TIME = 5000; // 5 segundos entre actualizaciones
+const LOAD_DEBOUNCE = 10000; // 10 segundos entre cargas
+
 const TaskList: React.FC = () => {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [openDialog, setOpenDialog] = useState(false);
@@ -23,6 +26,7 @@ const TaskList: React.FC = () => {
     const updateTimeoutRef = useRef<NodeJS.Timeout>();
     const lastUpdateRef = useRef<number>(0);
     const tasksRef = useRef<Task[]>([]);
+    const pendingUpdatesRef = useRef<Set<number>>(new Set());
     const socketHandlersRef = useRef({
         handleTaskUpdate: null as ((updatedTask: Task) => void) | null,
         handleTaskCreate: null as ((newTask: Task) => void) | null,
@@ -35,32 +39,43 @@ const TaskList: React.FC = () => {
 
     const loadTasks = useCallback(async () => {
         const now = Date.now();
-        if (now - lastUpdateRef.current < 5000) return;
+        if (now - lastUpdateRef.current < LOAD_DEBOUNCE) {
+            console.log('Ignorando carga de tareas, muy pronto desde la última actualización');
+            return;
+        }
         
         try {
             setLoading(true);
             console.log('Cargando tareas...');
             const fetchedTasks = await taskService.getAllTasks();
-            console.log('Tareas cargadas:', fetchedTasks);
             
             const currentTasks = tasksRef.current;
             const newTasks = Array.isArray(fetchedTasks) ? fetchedTasks : [];
             
-            const hasChanges = newTasks.length !== currentTasks.length || 
-                             newTasks.some((task, index) => {
-                                 const currentTask = currentTasks[index];
-                                 return !currentTask || 
-                                        JSON.stringify(task) !== JSON.stringify(currentTask);
-                             });
+            // Solo actualizar si hay cambios significativos
+            const hasSignificantChanges = newTasks.length !== currentTasks.length || 
+                                        newTasks.some((task, index) => {
+                                            const currentTask = currentTasks[index];
+                                            if (!currentTask) return true;
+                                            
+                                            // Comparar solo campos relevantes
+                                            return task.id !== currentTask.id ||
+                                                   task.status !== currentTask.status ||
+                                                   task.title !== currentTask.title ||
+                                                   task.priority !== currentTask.priority;
+                                        });
             
-            if (hasChanges) {
+            if (hasSignificantChanges) {
+                console.log('Actualizando tareas debido a cambios significativos');
                 setTasks(newTasks);
+            } else {
+                console.log('No hay cambios significativos en las tareas');
             }
             
             lastUpdateRef.current = now;
+            pendingUpdatesRef.current.clear();
         } catch (error) {
             console.error('Error al cargar las tareas:', error);
-            setTasks([]);
         } finally {
             setLoading(false);
         }
@@ -73,61 +88,53 @@ const TaskList: React.FC = () => {
         }
     }, [loadTasks]);
 
+    const processUpdates = useCallback(() => {
+        if (pendingUpdatesRef.current.size > 0) {
+            console.log('Procesando actualizaciones pendientes');
+            loadTasks();
+        }
+    }, [loadTasks]);
+
     useEffect(() => {
         let isMounted = true;
         
         const handleTaskUpdate = (updatedTask: Task) => {
             if (!isMounted) return;
             
+            console.log('Recibida actualización de tarea:', updatedTask.id);
+            pendingUpdatesRef.current.add(updatedTask.id);
+            
             if (updateTimeoutRef.current) {
                 clearTimeout(updateTimeoutRef.current);
             }
             
-            updateTimeoutRef.current = setTimeout(() => {
-                setTasks(prevTasks => {
-                    const taskExists = prevTasks.some(task => task.id === updatedTask.id);
-                    if (!taskExists) return prevTasks;
-                    
-                    const updatedTasks = prevTasks.map(task => 
-                        task.id === updatedTask.id ? updatedTask : task
-                    );
-                    
-                    const hasChanges = JSON.stringify(updatedTasks) !== JSON.stringify(prevTasks);
-                    return hasChanges ? updatedTasks : prevTasks;
-                });
-            }, 2000);
+            updateTimeoutRef.current = setTimeout(processUpdates, DEBOUNCE_TIME);
         };
 
         const handleTaskCreate = (newTask: Task) => {
             if (!isMounted) return;
             
+            console.log('Recibida nueva tarea:', newTask.id);
+            pendingUpdatesRef.current.add(newTask.id);
+            
             if (updateTimeoutRef.current) {
                 clearTimeout(updateTimeoutRef.current);
             }
             
-            updateTimeoutRef.current = setTimeout(() => {
-                setTasks(prevTasks => {
-                    const taskExists = prevTasks.some(task => task.id === newTask.id);
-                    if (taskExists) return prevTasks;
-                    return [...prevTasks, newTask];
-                });
-            }, 2000);
+            updateTimeoutRef.current = setTimeout(processUpdates, DEBOUNCE_TIME);
         };
 
         const handleTaskDelete = (taskId: number) => {
             if (!isMounted) return;
             
+            console.log('Recibida eliminación de tarea:', taskId);
+            pendingUpdatesRef.current.add(taskId);
+            
             if (updateTimeoutRef.current) {
                 clearTimeout(updateTimeoutRef.current);
             }
             
-            updateTimeoutRef.current = setTimeout(() => {
-                setTasks(prevTasks => {
-                    const taskExists = prevTasks.some(task => task.id === taskId);
-                    if (!taskExists) return prevTasks;
-                    return prevTasks.filter(task => task.id !== taskId);
-                });
-            }, 2000);
+            updateTimeoutRef.current = setTimeout(processUpdates, DEBOUNCE_TIME);
         };
 
         socketHandlersRef.current = {
@@ -156,7 +163,7 @@ const TaskList: React.FC = () => {
                 clearTimeout(updateTimeoutRef.current);
             }
         };
-    }, []);
+    }, [processUpdates]);
 
     const handleTaskMove = useCallback(async (taskId: number, newStatus: TaskStatus) => {
         try {
