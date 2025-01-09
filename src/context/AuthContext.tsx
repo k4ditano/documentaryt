@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authService } from '../services/authService';
 import type { User } from '../types/index';
 
@@ -23,38 +23,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
-  useEffect(() => {
+  const initAuth = useCallback(async () => {
     const token = authService.getToken();
     
-    // Si no hay token, simplemente terminamos la inicialización
-    if (!token) {
+    if (!token || !authService.isTokenValid(token)) {
       setLoading(false);
+      setInitialized(true);
       return;
     }
 
-    const initAuth = async () => {
-      try {
-        const userData = await authService.getCurrentUser();
-        if (userData) {
-          setUser(userData);
-          setIsAuthenticated(true);
-        } else {
-          authService.clearSession();
-        }
-      } catch (error) {
-        console.error('Error al inicializar autenticación:', error);
+    try {
+      const userData = await authService.getCurrentUser();
+      if (userData) {
+        setUser(userData);
+        setIsAuthenticated(true);
+      } else {
         authService.clearSession();
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch (error) {
+      console.error('Error al inicializar autenticación:', error);
+      authService.clearSession();
+    } finally {
+      setLoading(false);
+      setInitialized(true);
+    }
+  }, []);
 
-    initAuth();
-  }, []); // Solo se ejecuta una vez al montar el componente
+  useEffect(() => {
+    if (!initialized) {
+      initAuth();
+    }
+  }, [initialized, initAuth]);
 
   const login = async (email: string, password: string) => {
     try {
+      setLoading(true);
       const response = await authService.login(email, password);
       setUser(response.user);
       setIsAuthenticated(true);
@@ -64,11 +69,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setError('Credenciales inválidas');
       setIsAuthenticated(false);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   const register = async (username: string, email: string, password: string) => {
     try {
+      setLoading(true);
       const response = await authService.register(username, email, password);
       setUser(response.user);
       setIsAuthenticated(true);
@@ -78,6 +86,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setError('Error al registrar usuario');
       setIsAuthenticated(false);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -144,6 +154,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     uploadAvatar,
     clearError
   };
+
+  if (!initialized) {
+    return null;
+  }
 
   return (
     <AuthContext.Provider value={value}>

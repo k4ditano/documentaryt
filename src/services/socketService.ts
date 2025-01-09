@@ -6,13 +6,13 @@ type EventHandler = (...args: any[]) => void;
 class SocketService {
     private socket: Socket | null = null;
     private reconnectAttempts = 0;
-    private maxReconnectAttempts = 5;
-    private reconnectDelay = 30000;
+    private maxReconnectAttempts = 3;
+    private reconnectDelay = 5000;
     private reconnectTimer: NodeJS.Timeout | null = null;
     private eventHandlers: Map<string, Set<EventHandler>> = new Map();
     private isInitializing = false;
     private lastEventTimestamps: Map<string, number> = new Map();
-    private debounceTime = 5000;
+    private debounceTime = 1000;
     private isConnected = false;
 
     constructor() {
@@ -25,20 +25,18 @@ class SocketService {
             return;
         }
 
+        const token = getToken();
+        if (!token) {
+            console.log('No hay token disponible');
+            return;
+        }
+
         this.isInitializing = true;
 
         try {
-            const token = getToken();
-            if (!token) {
-                console.log('No hay token disponible');
-                return;
-            }
-
             const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
             const baseUrl = apiUrl.replace('/api', '');
             const wsUrl = baseUrl;
-
-            console.log('Conectando a:', wsUrl);
 
             if (this.socket) {
                 this.socket.disconnect();
@@ -50,7 +48,7 @@ class SocketService {
                 transports: ['websocket'],
                 reconnection: false,
                 path: '/socket.io',
-                timeout: 20000
+                timeout: 5000
             });
 
             this.setupEventListeners();
@@ -87,7 +85,9 @@ class SocketService {
         this.socket.on('connect_error', (error) => {
             console.error('Error de conexión:', error);
             this.isConnected = false;
-            this.attemptReconnect();
+            if (this.reconnectAttempts < this.maxReconnectAttempts) {
+                this.attemptReconnect();
+            }
         });
     }
 
@@ -122,8 +122,6 @@ class SocketService {
                     if (now - lastTimestamp >= this.debounceTime) {
                         this.lastEventTimestamps.set(event, now);
                         handler(data);
-                    } else {
-                        console.log(`Evento ${event} ignorado por debounce`);
                     }
                 });
             });
@@ -136,9 +134,9 @@ class SocketService {
         }
         this.eventHandlers.get(event)?.add(callback as EventHandler);
 
-        if (!this.isConnected) {
+        if (!this.isConnected && !this.isInitializing) {
             this.initSocket();
-        } else {
+        } else if (this.socket?.connected) {
             const handler = (data: T) => {
                 const now = Date.now();
                 const lastTimestamp = this.lastEventTimestamps.get(event) || 0;
@@ -146,11 +144,9 @@ class SocketService {
                 if (now - lastTimestamp >= this.debounceTime) {
                     this.lastEventTimestamps.set(event, now);
                     callback(data);
-                } else {
-                    console.log(`Evento ${event} ignorado por debounce`);
                 }
             };
-            this.socket?.on(event, handler);
+            this.socket.on(event, handler);
         }
     }
 
