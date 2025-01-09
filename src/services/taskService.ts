@@ -38,82 +38,97 @@ axios.interceptors.request.use(
     }
 );
 
-export const taskService = {
-    lastFetch: 0,
-    cachedTasks: [] as Task[],
-    cacheTimeout: 10000, // 10 segundos
-    isFetching: false,
+class TaskService {
+    private lastFetch: number = 0;
+    private cachedTasks: Task[] = [];
+    private cacheTimeout: number = 30000; // 30 segundos
+    private isFetching: boolean = false;
+    private fetchQueue: Array<() => void> = [];
 
-    // Obtener todas las tareas
-    getAllTasks: async (): Promise<Task[]> => {
+    private processFetchQueue() {
+        while (this.fetchQueue.length > 0) {
+            const resolve = this.fetchQueue.shift();
+            if (resolve) {
+                resolve();
+            }
+        }
+    }
+
+    public async getAllTasks(): Promise<Task[]> {
         try {
             const now = Date.now();
-            if (taskService.isFetching) {
-                console.log('Ya hay una solicitud en curso');
-                return taskService.cachedTasks;
+
+            // Si hay una solicitud en curso, esperar a que termine
+            if (this.isFetching) {
+                console.log('Esperando solicitud en curso...');
+                return new Promise((resolve) => {
+                    this.fetchQueue.push(() => resolve(this.cachedTasks));
+                });
             }
 
-            if (taskService.cachedTasks.length > 0 && now - taskService.lastFetch < taskService.cacheTimeout) {
+            // Usar caché si está disponible y no ha expirado
+            if (this.cachedTasks.length > 0 && now - this.lastFetch < this.cacheTimeout) {
                 console.log('Retornando tareas desde caché');
-                return taskService.cachedTasks;
+                return this.cachedTasks;
             }
 
-            taskService.isFetching = true;
+            this.isFetching = true;
             console.log('Solicitando todas las tareas a:', API_URL);
+            
             const response = await axios.get<Task[]>(API_URL);
             console.log('Respuesta getAllTasks:', response.data);
             
-            taskService.lastFetch = now;
-            taskService.cachedTasks = Array.isArray(response.data) ? response.data : [];
-            return taskService.cachedTasks;
+            this.lastFetch = now;
+            this.cachedTasks = Array.isArray(response.data) ? response.data : [];
+            
+            // Procesar cola de solicitudes pendientes
+            this.processFetchQueue();
+            
+            return this.cachedTasks;
         } catch (error) {
             console.error('Error al obtener las tareas:', error);
             if (axios.isAxiosError(error) && error.response?.status === 401) {
                 window.location.href = '/login';
             }
-            return taskService.cachedTasks;
+            return this.cachedTasks;
         } finally {
-            taskService.isFetching = false;
+            this.isFetching = false;
         }
-    },
+    }
 
-    // Crear una nueva tarea
-    createTask: async (task: Omit<Task, 'id' | 'created_at' | 'updated_at' | 'user_id'>): Promise<Task> => {
+    public async createTask(task: Omit<Task, 'id' | 'created_at' | 'updated_at' | 'user_id'>): Promise<Task> {
         try {
             const response = await axios.post<Task>(API_URL, task);
-            taskService.lastFetch = 0; // Invalidar caché
+            this.invalidateCache();
             return response.data;
         } catch (error) {
             console.error('Error al crear la tarea:', error);
             throw error;
         }
-    },
+    }
 
-    // Actualizar una tarea existente
-    updateTask: async (id: number, taskData: Partial<Task>): Promise<Task> => {
+    public async updateTask(id: number, taskData: Partial<Task>): Promise<Task> {
         try {
             const response = await axios.put<Task>(`${API_URL}/${id}`, taskData);
-            taskService.lastFetch = 0; // Invalidar caché
+            this.invalidateCache();
             return response.data;
         } catch (error) {
             console.error('Error al actualizar la tarea:', error);
             throw error;
         }
-    },
+    }
 
-    // Eliminar una tarea
-    deleteTask: async (id: number): Promise<void> => {
+    public async deleteTask(id: number): Promise<void> {
         try {
             await axios.delete(`${API_URL}/${id}`);
-            taskService.lastFetch = 0; // Invalidar caché
+            this.invalidateCache();
         } catch (error) {
             console.error('Error al eliminar la tarea:', error);
             throw error;
         }
-    },
+    }
 
-    // Obtener tareas por rango de fechas
-    getTasksByDateRange: async (start: string, end: string): Promise<Task[]> => {
+    public async getTasksByDateRange(start: string, end: string): Promise<Task[]> {
         try {
             const response = await axios.get<Task[]>(`${API_URL}/calendar/${start}/${end}`);
             return Array.isArray(response.data) ? response.data : [];
@@ -122,4 +137,11 @@ export const taskService = {
             return [];
         }
     }
-}; 
+
+    private invalidateCache() {
+        this.lastFetch = 0;
+        this.cachedTasks = [];
+    }
+}
+
+export const taskService = new TaskService(); 

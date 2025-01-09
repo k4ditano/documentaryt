@@ -7,19 +7,20 @@ class SocketService {
     private socket: Socket | null = null;
     private reconnectAttempts = 0;
     private maxReconnectAttempts = 5;
-    private reconnectDelay = 10000;
+    private reconnectDelay = 30000;
     private reconnectTimer: NodeJS.Timeout | null = null;
     private eventHandlers: Map<string, Set<EventHandler>> = new Map();
     private isInitializing = false;
     private lastEventTimestamps: Map<string, number> = new Map();
-    private debounceTime = 1000;
+    private debounceTime = 5000;
+    private isConnected = false;
 
     constructor() {
-        this.initSocket();
+        console.log('SocketService creado');
     }
 
     private async initSocket() {
-        if (this.isInitializing || (this.socket?.connected && !this.socket?.disconnected)) {
+        if (this.isInitializing || this.isConnected) {
             console.log('Conexión existente o inicialización en progreso');
             return;
         }
@@ -39,13 +40,15 @@ class SocketService {
 
             console.log('Conectando a:', wsUrl);
 
+            if (this.socket) {
+                this.socket.disconnect();
+                this.socket = null;
+            }
+
             this.socket = io(wsUrl, {
                 auth: { token },
                 transports: ['websocket'],
-                reconnection: true,
-                reconnectionDelay: 5000,
-                reconnectionDelayMax: 30000,
-                reconnectionAttempts: 5,
+                reconnection: false,
                 path: '/socket.io',
                 timeout: 20000
             });
@@ -53,6 +56,7 @@ class SocketService {
             this.setupEventListeners();
         } catch (error) {
             console.error('Error de inicialización:', error);
+            this.isConnected = false;
         } finally {
             this.isInitializing = false;
         }
@@ -64,6 +68,7 @@ class SocketService {
         this.socket.on('connect', () => {
             console.log('Conexión establecida');
             this.reconnectAttempts = 0;
+            this.isConnected = true;
             if (this.reconnectTimer) {
                 clearTimeout(this.reconnectTimer);
                 this.reconnectTimer = null;
@@ -73,6 +78,7 @@ class SocketService {
 
         this.socket.on('disconnect', (reason) => {
             console.log('Desconexión:', reason);
+            this.isConnected = false;
             if (reason === 'io server disconnect' || reason === 'transport close') {
                 this.attemptReconnect();
             }
@@ -80,6 +86,7 @@ class SocketService {
 
         this.socket.on('connect_error', (error) => {
             console.error('Error de conexión:', error);
+            this.isConnected = false;
             this.attemptReconnect();
         });
     }
@@ -95,9 +102,11 @@ class SocketService {
         }
 
         this.reconnectTimer = setTimeout(() => {
-            console.log(`Intento ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts}`);
-            this.reconnectAttempts++;
-            this.initSocket();
+            if (!this.isConnected) {
+                console.log(`Intento ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts}`);
+                this.reconnectAttempts++;
+                this.initSocket();
+            }
         }, this.reconnectDelay);
     }
 
@@ -113,6 +122,8 @@ class SocketService {
                     if (now - lastTimestamp >= this.debounceTime) {
                         this.lastEventTimestamps.set(event, now);
                         handler(data);
+                    } else {
+                        console.log(`Evento ${event} ignorado por debounce`);
                     }
                 });
             });
@@ -125,7 +136,7 @@ class SocketService {
         }
         this.eventHandlers.get(event)?.add(callback as EventHandler);
 
-        if (!this.socket?.connected) {
+        if (!this.isConnected) {
             this.initSocket();
         } else {
             const handler = (data: T) => {
@@ -135,23 +146,27 @@ class SocketService {
                 if (now - lastTimestamp >= this.debounceTime) {
                     this.lastEventTimestamps.set(event, now);
                     callback(data);
+                } else {
+                    console.log(`Evento ${event} ignorado por debounce`);
                 }
             };
-            this.socket.on(event, handler);
+            this.socket?.on(event, handler);
         }
     }
 
     public off<T>(event: string, callback: (data: T) => void) {
         this.eventHandlers.get(event)?.delete(callback as EventHandler);
-        this.socket?.off(event, callback);
+        if (this.socket?.connected) {
+            this.socket.off(event, callback);
+        }
     }
 
     public emit<T>(event: string, data: T) {
-        if (!this.socket?.connected) {
+        if (!this.isConnected) {
             console.log('No hay conexión activa');
             return;
         }
-        this.socket.emit(event, data);
+        this.socket?.emit(event, data);
     }
 
     public disconnect() {
@@ -165,6 +180,8 @@ class SocketService {
         }
         this.eventHandlers.clear();
         this.lastEventTimestamps.clear();
+        this.isConnected = false;
+        this.reconnectAttempts = 0;
     }
 }
 
