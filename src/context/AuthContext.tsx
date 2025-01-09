@@ -23,29 +23,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     const initAuth = async () => {
       try {
-        setLoading(true);
         const token = authService.getToken();
-        if (token) {
-          const userData = await authService.getCurrentUser();
-          if (userData) {
-            setUser(userData);
-            setIsAuthenticated(true);
-          } else {
-            // Si no hay usuario pero hay token, limpiar el token
-            authService.removeToken();
-            setIsAuthenticated(false);
-          }
+        if (!token) {
+          setIsAuthenticated(false);
+          setUser(null);
+          return;
+        }
+
+        const userData = await authService.getCurrentUser();
+        if (userData) {
+          setUser(userData);
+          setIsAuthenticated(true);
+        } else {
+          authService.removeToken();
+          setIsAuthenticated(false);
+          setUser(null);
         }
       } catch (error) {
         console.error('Error al inicializar autenticación:', error);
         authService.removeToken();
         setIsAuthenticated(false);
+        setUser(null);
       } finally {
         setLoading(false);
+        setIsInitialized(true);
       }
     };
 
@@ -158,7 +164,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     clearError
   };
 
-  if (loading) {
+  if (!isInitialized) {
     return <div>Cargando...</div>;
   }
 

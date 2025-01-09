@@ -2,7 +2,7 @@ import type { User } from '../types/index';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 
-const API_URL = '/auth';
+const API_URL = `${import.meta.env.VITE_API_URL}/auth`;
 
 interface LoginResponse {
   user: User;
@@ -75,8 +75,9 @@ class AuthService {
     try {
       const token = this.getToken();
       
-      if (!token) {
-        console.log('No hay token almacenado');
+      if (!token || !this.isTokenValid(token)) {
+        console.log('No hay token válido');
+        this.clearSession();
         return null;
       }
 

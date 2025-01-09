@@ -112,37 +112,37 @@ const StyledRouterLink = styled(RouterLink)({
 
 const Login: FC = () => {
   const navigate = useNavigate();
-  const { login, isAuthenticated, error: authError } = useAuth();
+  const { login, isAuthenticated, error: authError, loading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    // Si el usuario ya está autenticado, redirigir al dashboard
-    if (isAuthenticated) {
-      navigate('/');
+    if (isAuthenticated && !loading) {
+      navigate('/', { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, loading, navigate]);
 
   useEffect(() => {
-    // Actualizar el error local cuando cambia el error de autenticación
     if (authError) {
       setError(authError);
+      setIsLoading(false);
     }
   }, [authError]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
+    
     setError('');
     setIsLoading(true);
 
     try {
       await login(email, password);
-      // No necesitamos navegar aquí, el useEffect se encargará de eso
+      // La redirección se maneja en el primer useEffect
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al iniciar sesión');
-    } finally {
       setIsLoading(false);
     }
   };
