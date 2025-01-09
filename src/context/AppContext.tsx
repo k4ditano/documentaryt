@@ -124,12 +124,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     fetchData();
     
     // Suscribirse a actualizaciones en tiempo real
-    socketService.on('pageUpdated', () => refreshPages());
-    socketService.on('folderUpdated', () => refreshFolders());
+    const handlePageUpdate = () => refreshPages();
+    const handleFolderUpdate = () => refreshFolders();
+    
+    socketService.on('pageUpdated', handlePageUpdate);
+    socketService.on('folderUpdated', handleFolderUpdate);
     
     return () => {
-      socketService.off('pageUpdated');
-      socketService.off('folderUpdated');
+      socketService.off('pageUpdated', handlePageUpdate);
+      socketService.off('folderUpdated', handleFolderUpdate);
     };
   }, [fetchData]);
 
