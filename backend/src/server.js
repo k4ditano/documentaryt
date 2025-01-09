@@ -63,10 +63,27 @@ app.use((req, res, next) => {
   if (token) {
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.userId = decoded.id;
-      console.log('Token HTTP verificado para usuario:', decoded.id);
+      
+      // Solo renovar el token si está próximo a expirar
+      const tokenExp = decoded.exp * 1000; // Convertir a milisegundos
+      const now = Date.now();
+      const timeToExpire = tokenExp - now;
+      
+      // Si el token expira en menos de 12 horas, renovarlo
+      if (timeToExpire < 12 * 60 * 60 * 1000) {
+        const newToken = jwt.sign({ id: decoded.id }, process.env.JWT_SECRET, {
+          expiresIn: process.env.JWT_EXPIRE || '24h'
+        });
+        
+        res.cookie('token', newToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 24 * 60 * 60 * 1000 // 24 horas
+        });
+      }
     } catch (err) {
-      console.error('Error al verificar token HTTP:', err.message);
+      console.error('Error al verificar token:', err.message);
     }
   }
   next();

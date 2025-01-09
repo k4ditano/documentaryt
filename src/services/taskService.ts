@@ -39,20 +39,33 @@ axios.interceptors.request.use(
 );
 
 export const taskService = {
+    lastFetch: 0,
+    cachedTasks: [] as Task[],
+    cacheTimeout: 5000, // 5 segundos
+
     // Obtener todas las tareas
     getAllTasks: async (): Promise<Task[]> => {
         try {
+            const now = Date.now();
+            if (taskService.cachedTasks.length > 0 && now - taskService.lastFetch < taskService.cacheTimeout) {
+                console.log('Retornando tareas desde caché');
+                return taskService.cachedTasks;
+            }
+
             console.log('Solicitando todas las tareas a:', API_URL);
             const response = await axios.get<Task[]>(API_URL);
             console.log('Respuesta getAllTasks:', response.data);
-            return Array.isArray(response.data) ? response.data : [];
+            
+            taskService.lastFetch = now;
+            taskService.cachedTasks = Array.isArray(response.data) ? response.data : [];
+            return taskService.cachedTasks;
         } catch (error) {
             console.error('Error al obtener las tareas:', error);
             if (axios.isAxiosError(error) && error.response?.status === 401) {
                 // Token expirado o inválido
                 window.location.href = '/login';
             }
-            return [];
+            return taskService.cachedTasks;
         }
     },
 

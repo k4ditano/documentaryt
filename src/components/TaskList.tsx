@@ -19,6 +19,7 @@ const TaskList: React.FC = () => {
         completed: true
     });
     const [loading, setLoading] = useState(false);
+    const [hasLoaded, setHasLoaded] = useState(false);
 
     // Comentando temporalmente la lógica de carga y actualización
     /*
@@ -167,11 +168,18 @@ const TaskList: React.FC = () => {
     // Solo para pruebas - carga inicial de tareas
     useEffect(() => {
         const loadInitialTasks = async () => {
+            if (hasLoaded) {
+                console.log('Las tareas ya se han cargado, omitiendo carga...');
+                return;
+            }
+
             try {
                 setLoading(true);
                 console.log('Carga inicial de tareas...');
                 const fetchedTasks = await taskService.getAllTasks();
+                console.log('Tareas recibidas:', fetchedTasks?.length || 0);
                 setTasks(Array.isArray(fetchedTasks) ? fetchedTasks : []);
+                setHasLoaded(true);
             } catch (error) {
                 console.error('Error en carga inicial:', error);
             } finally {
@@ -180,7 +188,7 @@ const TaskList: React.FC = () => {
         };
 
         loadInitialTasks();
-    }, []);
+    }, [hasLoaded]);
 
     const handleTaskMove = useCallback(async (taskId: number, newStatus: TaskStatus) => {
         try {
