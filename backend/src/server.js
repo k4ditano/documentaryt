@@ -41,7 +41,10 @@ const corsOptions = {
   origin: [
     "http://145.223.100.119",
     "http://145.223.100.119:3001",
-    "http://145.223.100.119:80"
+    "http://145.223.100.119:80",
+    "http://localhost",
+    "http://localhost:3001",
+    "http://localhost:80"
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -131,7 +134,10 @@ const io = new Server(httpServer, {
     origin: [
       "http://145.223.100.119",
       "http://145.223.100.119:3001",
-      "http://145.223.100.119:80"
+      "http://145.223.100.119:80",
+      "http://localhost",
+      "http://localhost:3001",
+      "http://localhost:80"
     ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
