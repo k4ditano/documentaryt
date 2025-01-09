@@ -1,3 +1,4 @@
+import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -8,11 +9,10 @@ const PrivateRoute = ({ children }) => {
         return null;
     }
     
-    if (!isAuthenticated) {
-        return <Navigate to="/login" replace={true} />;
-    }
-    
-    return children;
+    return isAuthenticated ? children : React.createElement(Navigate, {
+        to: '/login',
+        replace: true
+    });
 };
 
 export default PrivateRoute;
