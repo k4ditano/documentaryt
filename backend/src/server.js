@@ -211,8 +211,8 @@ app.use((req, res, next) => {
 });
 
 // Iniciar el servidor HTTP con socket.io
-httpServer.listen(port, () => {
-  console.log(`Servidor escuchando en el puerto ${port}`);
+httpServer.listen(port, '0.0.0.0', () => {
+  console.log(`Servidor escuchando en el puerto ${port} en todas las interfaces`);
   console.log(`CORS configurado con origin: ${corsOptions.origin}`);
   console.log(`Socket.IO configurado con origin: ${io.opts.cors.origin}`);
   initializeDatabase();
