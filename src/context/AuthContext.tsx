@@ -32,6 +32,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!token) {
           setIsAuthenticated(false);
           setUser(null);
+          setIsInitialized(true);
+          setLoading(false);
+          return;
+        }
+
+        if (!authService.isTokenValid(token)) {
+          authService.clearSession();
+          setIsAuthenticated(false);
+          setUser(null);
+          setIsInitialized(true);
+          setLoading(false);
           return;
         }
 
@@ -40,13 +51,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(userData);
           setIsAuthenticated(true);
         } else {
-          authService.removeToken();
+          authService.clearSession();
           setIsAuthenticated(false);
           setUser(null);
         }
       } catch (error) {
         console.error('Error al inicializar autenticación:', error);
-        authService.removeToken();
+        authService.clearSession();
         setIsAuthenticated(false);
         setUser(null);
       } finally {
@@ -55,8 +66,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
-    initAuth();
-  }, []);
+    if (!isInitialized) {
+      initAuth();
+    }
+  }, [isInitialized]);
 
   const login = async (email: string, password: string) => {
     try {

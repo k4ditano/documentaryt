@@ -117,13 +117,13 @@ class AuthService {
     localStorage.setItem('user', JSON.stringify(user));
   }
 
-  private clearSession(): void {
+  clearSession(): void {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     delete axios.defaults.headers.common['Authorization'];
   }
 
-  private isTokenValid(token: string): boolean {
+  isTokenValid(token: string): boolean {
     try {
       const decoded = jwtDecode<{ exp: number }>(token);
       return decoded.exp * 1000 > Date.now();
