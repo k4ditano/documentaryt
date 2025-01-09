@@ -5,6 +5,7 @@ class SocketService {
   private socket: Socket | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
+  private reconnectTimer: NodeJS.Timeout | null = null;
 
   connect() {
     if (this.socket) return;
@@ -15,23 +16,27 @@ class SocketService {
       return;
     }
 
-    const baseUrl = import.meta.env.VITE_API_URL.replace('/api', '') || '';
-    console.log('Conectando a websocket en:', baseUrl);
+    try {
+      const baseUrl = import.meta.env.VITE_API_URL.replace('/api', '') || '';
+      console.log('Conectando a websocket en:', baseUrl);
 
-    this.socket = io(baseUrl, {
-      auth: { token },
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionAttempts: this.maxReconnectAttempts,
-      reconnectionDelay: 1000,
-      timeout: 10000,
-      path: '/socket.io/',
-      autoConnect: false
-    });
+      this.socket = io(baseUrl, {
+        auth: { token },
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionAttempts: this.maxReconnectAttempts,
+        reconnectionDelay: 1000,
+        timeout: 30000,
+        path: '/socket.io/',
+        autoConnect: false
+      });
 
-    this.socket.connect();
-
-    this.setupEventHandlers();
+      this.setupEventHandlers();
+      this.socket.connect();
+    } catch (error) {
+      console.error('Error al configurar el socket:', error);
+      this.scheduleReconnect();
+    }
   }
 
   private setupEventHandlers() {
@@ -40,6 +45,10 @@ class SocketService {
     this.socket.on('connect', () => {
       console.log('Conectado al servidor de websockets');
       this.reconnectAttempts = 0;
+      if (this.reconnectTimer) {
+        clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = null;
+      }
     });
 
     this.socket.on('connect_error', (error) => {
@@ -49,21 +58,34 @@ class SocketService {
       if (this.reconnectAttempts >= this.maxReconnectAttempts) {
         console.error('Máximo número de intentos de reconexión alcanzado');
         this.disconnect();
+      } else {
+        this.scheduleReconnect();
       }
     });
 
     this.socket.on('disconnect', (reason) => {
       console.log('Desconectado del servidor de websockets. Razón:', reason);
       if (reason === 'io server disconnect') {
-        // El servidor forzó la desconexión
         console.log('Reconectando por desconexión del servidor...');
-        this.connect();
+        this.scheduleReconnect();
       }
     });
 
     this.socket.on('error', (error) => {
       console.error('Error de websocket:', error);
+      this.scheduleReconnect();
     });
+  }
+
+  private scheduleReconnect() {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+    }
+    this.reconnectTimer = setTimeout(() => {
+      console.log('Intentando reconectar...');
+      this.disconnect();
+      this.connect();
+    }, 5000);
   }
 
   disconnect() {
@@ -71,6 +93,10 @@ class SocketService {
       this.socket.disconnect();
       this.socket = null;
       this.reconnectAttempts = 0;
+    }
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
     }
   }
 
