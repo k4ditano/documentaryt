@@ -8,9 +8,6 @@ import DraggableTaskList from './DraggableTaskList';
 import MainLayout from '../components/layout/MainLayout';
 import socketService from '../services/socketService';
 
-const DEBOUNCE_TIME = 5000; // 5 segundos entre actualizaciones
-const LOAD_DEBOUNCE = 10000; // 10 segundos entre cargas
-
 const TaskList: React.FC = () => {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [openDialog, setOpenDialog] = useState(false);
@@ -22,6 +19,9 @@ const TaskList: React.FC = () => {
         completed: true
     });
     const [loading, setLoading] = useState(false);
+
+    // Comentando temporalmente la lógica de carga y actualización
+    /*
     const isInitialMount = useRef(true);
     const updateTimeoutRef = useRef<NodeJS.Timeout>();
     const lastUpdateRef = useRef<number>(0);
@@ -52,13 +52,11 @@ const TaskList: React.FC = () => {
             const currentTasks = tasksRef.current;
             const newTasks = Array.isArray(fetchedTasks) ? fetchedTasks : [];
             
-            // Solo actualizar si hay cambios significativos
             const hasSignificantChanges = newTasks.length !== currentTasks.length || 
                                         newTasks.some((task, index) => {
                                             const currentTask = currentTasks[index];
                                             if (!currentTask) return true;
                                             
-                                            // Comparar solo campos relevantes
                                             return task.id !== currentTask.id ||
                                                    task.status !== currentTask.status ||
                                                    task.title !== currentTask.title ||
@@ -164,6 +162,25 @@ const TaskList: React.FC = () => {
             }
         };
     }, [processUpdates]);
+    */
+
+    // Solo para pruebas - carga inicial de tareas
+    useEffect(() => {
+        const loadInitialTasks = async () => {
+            try {
+                setLoading(true);
+                console.log('Carga inicial de tareas...');
+                const fetchedTasks = await taskService.getAllTasks();
+                setTasks(Array.isArray(fetchedTasks) ? fetchedTasks : []);
+            } catch (error) {
+                console.error('Error en carga inicial:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadInitialTasks();
+    }, []);
 
     const handleTaskMove = useCallback(async (taskId: number, newStatus: TaskStatus) => {
         try {
