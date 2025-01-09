@@ -7,12 +7,15 @@ const PrivateRoute = ({ children }) => {
     const location = useLocation();
 
     if (loading) {
-        return <div>Cargando...</div>; // O tu componente de loading
+        return React.createElement('div', null, 'Cargando...');
     }
 
     if (!isAuthenticated) {
-        // Guardamos la ubicación actual para redirigir después del login
-        return <Navigate to="/login" state={{ from: location }} replace />;
+        return React.createElement(Navigate, {
+            to: '/login',
+            state: { from: location },
+            replace: true
+        });
     }
 
     return children;
