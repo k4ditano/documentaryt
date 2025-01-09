@@ -56,4 +56,4 @@ const authenticateToken = (req, res, next) => {
   }
 };
 
-export { authenticateToken }; 
+export default authenticateToken; 
